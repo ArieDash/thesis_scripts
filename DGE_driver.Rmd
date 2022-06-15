@@ -1,0 +1,268 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+
+```{r}
+
+##Tximport driver chunk
+
+#input variable names for use in script
+
+#Regex of samples names we want to keep
+regex = "CL"
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+#type = "all"
+#type = "no_batch"
+#type = "batch"
+type = "red"
+
+#file to write csv to
+out = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+
+#names of file with salmon output folders
+input_samples = input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+
+
+
+#install tximport?
+install = 0
+
+#location of gene_trans_map
+gtm = "..\\annotation\\gene_trans_map.csv"
+
+rmarkdown::render(input = "tximport.Rmd", params = list(out = out, input_samples = input_samples, regex = regex))
+```
+
+
+```{r}
+
+##DGE GLM driver chunk
+#add heatmap and pearson correlation
+#get DEG lists -> send to Holly
+#do UvsE and fluctuating vs all 3 static comparisons in no_batch
+
+#may need to check box for Tools -> Global options -> Sweave -> LaTeX editing and compilation -> Use tinytex when compiling .tex files for this to work
+
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues = c()
+
+tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
+
+#Path to output directory for DEG lists
+out = "..\\data_analysis\\"
+
+#if we want to install the package. Set to 1 to install
+install = 0
+
+for(regex in tissues){
+  for(type in types){
+    #samples description file
+    input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+
+    input_counts = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+
+    #path to and name of output report file
+    #if it errors, try using just the file name output and moving it where you want afterwards. I was having some         issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it     wrote the .tex file to the location just fine
+    report_output = paste0(regex, "_", type, "_LRT.pdf")
+
+    rmarkdown::render(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document')
+  
+    #we only want to install on the first iteration, so set install to 0 now
+    install = 0
+
+  }
+}
+
+```
+
+
+
+```{r}
+
+##DGE Pairwise driver chunk
+
+#may need to check box for Tools -> Global options -> Sweave -> LaTeX editing and compilation -> Use tinytex when compiling .tex files for this to work
+
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+types = append(types, "all")
+types = append(types, "no_batch")
+types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues = c()
+
+tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
+
+for(regex in tissues){
+  for(type in types){
+    #samples description file
+    input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+
+    input_counts = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+
+    #if we want to install the package. Set to 1 to install
+    install = 0
+
+    #path to and name of output file
+    #if it errors, try using just the file name output and moving it where you want afterwards. I was having some         issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it     wrote the .tex file to the location just fine
+    output = paste0(regex, "_", type, "_pairwise", ".pdf")
+
+    rmarkdown::render(input = "DGE_pairwise.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install), output_file = output, output_format = 'pdf_document')
+    
+    #we only want to install on the first iteration, so set install to 0 now
+    install = 0
+  
+  }
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

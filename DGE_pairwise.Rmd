@@ -1,0 +1,235 @@
+---
+title: "DGE Pairwise"
+output: 
+  pdf_document: default
+params:
+  input_samples: ""
+  regex: ""
+  input_counts: ""
+  install: 0
+---
+
+
+
+
+```{r}
+if(params$install == 1){
+  if (!require("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+
+  BiocManager::install("edgeR")
+}
+```
+
+```{r}
+library(edgeR)
+```
+
+
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples
+```
+
+
+```{r}
+#for unscaled counts and length offset
+
+#read in txi data (counts and length offset)
+c_l = read.csv(params$input_counts)
+#set rownames to geneids
+rownames(c_l) = c_l$X
+#remove column containing geneids
+c_l = c_l[,-1]
+#extract counts and lengths tables from dataframe
+cts = c_l[,1:length(samples$Name)]
+colnames(cts) = samples$Name
+
+normMat = c_l[,(length(samples$Name)+1):(2*length(samples$Name))]
+colnames(normMat) = samples$Name
+#convert lengths from dataframe to matrix so tximport provided code works
+normMat = as.matrix(normMat)
+```
+
+```{r}
+#uncomment and use this chunk if passing scaledTPM counts
+
+#read in counts
+#counts = read.csv(params$input_counts)
+#set rownames to geneids
+#rownames(counts) = counts$X
+#remove column containing geneids
+#counts = counts[,-1]
+```
+
+
+```{r}
+#for unscaled counts and length offset
+
+#follow steps from tximport vignette to prep data for edgeR
+
+# Obtaining per-observation scaling factors for length, adjusted to avoid
+# changing the magnitude of the counts.
+normMat <- normMat/exp(rowMeans(log(normMat)))
+normCts <- cts/normMat
+
+# Computing effective library sizes from scaled counts, to account for
+# composition biases between samples. 
+eff_lib <- calcNormFactors(normCts) * colSums(normCts)
+
+# Combining effective library sizes with the length factors, and calculating
+# offsets for a log-link GLM.
+normMat <- sweep(normMat, 2, eff_lib, "*")
+normMat <- log(normMat)
+
+# Creating a DGEList object for use in edgeR.
+group = factor(samples$Treatment)
+y <- DGEList(counts = cts, group = group)
+y <- scaleOffset(y, normMat)
+
+# filtering using the design information
+#design <- model.matrix(~condition, data = sampleTable)
+#keep <- filterByExpr(y, design)
+keep = filterByExpr(y)
+y <- y[keep, ]
+```
+
+
+```{r}
+#uncomment and use this chunk if passing scaledTPM counts
+
+#group = factor(samples$Treatment)
+#y = DGEList(counts = counts, group = group)
+```
+
+```{r}
+#uncomment and use this chunk if passing scaledTPM counts
+
+#filter out low expressed genes
+#keep = filterByExpr(y)
+#y = y[keep, ]
+#normalize for effective library size
+#y = calcNormFactors(y)
+```
+
+
+```{r}
+#plot samples, look for outliers
+points = c(15,16,17,18,19)
+colors = c("green", "blue", "red", "orange", "purple")
+plotMDS(y, col = colors[group], pch = points[group], labels = colnames(y))
+legend("topleft", legend = levels(group), col = colors, pch = points)
+```
+
+```{r}
+y$samples
+```
+
+
+
+```{r}
+#calculate the design matrix
+design = model.matrix(~0+group, data = y$samples)
+colnames(design) = levels(y$samples$group)
+design
+```
+
+```{r}
+#calculate dispersion factors
+y = estimateDisp(y, design, robust = TRUE)
+plotBCV(y)
+```
+
+
+
+```{r}
+et_UC = exactTest(y, pair = c("U", "C"))
+topTags(et_UC)
+summary(decideTests(et_UC))
+plotMD(et_UC)
+abline(h = c(-1,1), col = "blue")
+
+et_RC = exactTest(y, pair = c("R", "C"))
+topTags(et_RC)
+summary(decideTests(et_RC))
+plotMD(et_RC)
+abline(h = c(-1,1), col = "blue")
+
+et_UR = exactTest(y, pair = c("U", "R"))
+topTags(et_UR)
+summary(decideTests(et_UR))
+plotMD(et_UR)
+abline(h = c(-1,1), col = "blue")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

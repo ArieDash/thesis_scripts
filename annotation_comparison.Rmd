@@ -1,0 +1,423 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+c_names = c("qseqid", "sseqid", "pident", "length", "mismatch", "gapopen", "qstart", "qend", "sstart", "send", "evalue", "bitscore")
+
+gill_sw = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\CG_swissprot.tsv", sep = '\t', header = FALSE, col.names = c_names)
+gill_nr = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\CG_nr.tsv", sep = '\t', header = FALSE, col.names = c_names)
+meta_sw = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\meta_swissprot.tsv", sep = '\t', header = FALSE, col.names = c_names)
+meta_nr = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\meta_nr.tsv", sep = '\t', header = FALSE, col.names = c_names)
+genome_sw = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\genome_swissprot.tsv", sep = '\t', header = FALSE, col.names = c_names)
+genome_nr = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\genome_nr.tsv", sep = '\t', header = FALSE, col.names = c_names)
+old_genome_sw = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\old_genome_swissprot.tsv", sep = '\t', header = FALSE, col.names = c_names)
+old_genome_nr = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\old_genome_nr.tsv", sep = '\t', header = FALSE, col.names = c_names)
+
+gill_sw_unique = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\CG_swissprot_unique.tsv", sep = '\t', header = FALSE, col.names = c_names)
+meta_sw_unique = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\meta_swissprot_unique.tsv", sep = '\t', header = FALSE, col.names = c_names)
+genome_sw_unique = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\genome_swissprot_unique.tsv", sep = '\t', header = FALSE, col.names = c_names)
+
+gill_sw_10 = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\CG_swissprot_10.tsv", sep = '\t', header = FALSE, col.names = c_names)
+meta_sw_10 = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\meta_swissprot_10.tsv", sep = '\t', header = FALSE, col.names = c_names)
+genome_sw_10 = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\genome_swissprot_10.tsv", sep = '\t', header = FALSE, col.names = c_names)
+```
+
+
+```{r}
+#data entry
+
+#number of contigs in each reference
+cg_contig_n = 87473
+m_contig_n = 91899
+ge_contig_n = 52396
+og_contig_n = 90708
+
+#number of queries that aligned fir each reference/database pair
+cg_nr_n = 49827
+cg_sw_n = 41065
+m_nr_n = 54134
+m_sw_n = 40026
+ge_nr_n = 31415
+ge_sw_n = 21037
+og_nr_n = 53899
+og_sw_n = 43751
+
+```
+
+
+
+```{r}
+#compare overlap between references to different databases
+
+#gill first
+
+#all the queries in sw that did not align to nr
+cg_comp_sw = setdiff(unique(gill_sw$qseqid), unique(gill_nr$qseqid))
+cg_comp_sw_count = length(cg_comp_sw)
+sprintf("number of gill contigs that aligned to sw but not nr: %d", cg_comp_sw_count)
+
+#all the queries in nr that did not align to sw
+cg_comp_nr = setdiff(unique(gill_nr$qseqid), unique(gill_sw$qseqid))
+cg_comp_nr_count = length(cg_comp_nr)
+sprintf("number of gill contigs that aligned to nr but not sw: %d", cg_comp_nr_count)
+
+#meta
+
+#all the queries in sw that did not align to nr
+m_comp_sw = setdiff(unique(meta_sw$qseqid), unique(meta_nr$qseqid))
+m_comp_sw_count = length(m_comp_sw)
+sprintf("number of meta contigs that aligned to sw but not nr: %d", m_comp_sw_count)
+
+#all the queries in nr that did not align to sw
+m_comp_nr = setdiff(unique(meta_nr$qseqid), unique(meta_sw$qseqid))
+m_comp_nr_count = length(m_comp_nr)
+sprintf("number of meta contigs that aligned to nr but not sw: %d", m_comp_nr_count)
+
+#genome
+
+#all the queries in sw that did not align to nr
+ge_comp_sw = setdiff(unique(genome_sw$qseqid), unique(genome_nr$qseqid))
+ge_comp_sw_count = length(ge_comp_sw)
+sprintf("number of genome contigs that aligned to sw but not nr: %d", ge_comp_sw_count)
+
+#all the queries in nr that did not align to sw
+ge_comp_nr = setdiff(unique(genome_nr$qseqid), unique(genome_sw$qseqid))
+ge_comp_nr_count = length(ge_comp_nr)
+sprintf("number of genome contigs that aligned to nr but not sw: %d", ge_comp_nr_count)
+
+#old genome
+
+#all the queries in sw that did not align to nr
+og_comp_sw = setdiff(unique(old_genome_sw$qseqid), unique(old_genome_nr$qseqid))
+og_comp_sw_count = length(og_comp_sw)
+sprintf("number of old_genome contigs that aligned to sw but not nr: %d", og_comp_sw_count)
+
+#all the queries in nr that did not align to sw
+og_comp_nr = setdiff(unique(old_genome_nr$qseqid), unique(old_genome_sw$qseqid))
+og_comp_nr_count = length(og_comp_nr)
+sprintf("number of old_genome contigs that aligned to nr but not sw: %d", og_comp_nr_count)
+```
+
+```{r}
+#total number of queries that aligned per reference
+#this equals the unique number that aligned to one database plus the number that only aligned to the other database
+
+#gill
+cg_total = cg_comp_nr_count + length(unique(gill_sw$qseqid))
+sprintf("Total number of gill contigs aligned: %d", cg_total)
+
+#meta
+m_total = m_comp_nr_count + length(unique(meta_sw$qseqid))
+sprintf("Total number of meta contigs aligned: %d", m_total)
+
+#genome
+ge_total = ge_comp_nr_count + length(unique(genome_sw$qseqid))
+sprintf("Total number of genome contigs aligned: %d", ge_total)
+
+#old_genome
+og_total = og_comp_nr_count + length(unique(old_genome_sw$qseqid))
+sprintf("Total number of old_genome contigs aligned: %d", og_total)
+
+```
+
+```{r}
+#total number of queries that aligned per reference to sw
+
+#gill
+cg_total_sw = length(unique(gill_sw$qseqid))
+sprintf("Total number of gill contigs aligned to sw: %d", cg_total_sw)
+
+#meta
+m_total_sw = length(unique(meta_sw$qseqid))
+sprintf("Total number of meta contigs aligned to sw: %d", m_total_sw)
+
+#genome
+ge_total_sw = length(unique(genome_sw$qseqid))
+sprintf("Total number of genome contigs aligned to sw: %d", ge_total_sw)
+
+#old_genome
+og_total_sw = length(unique(old_genome_sw$qseqid))
+sprintf("Total number of old_genome contigs aligned to sw: %d", og_total_sw)
+
+```
+
+
+
+
+```{r}
+#percent of each reference that aligned to at least one database
+
+#gill
+cg_p_align = cg_total/cg_contig_n *100
+sprintf("Percent of gill reference that aligned: %f%%: %d/%d", cg_p_align, cg_total, cg_contig_n)
+
+#meta
+m_p_align = m_total/m_contig_n *100
+sprintf("Percent of meta reference that aligned: %f%%: %d/%d", m_p_align, m_total, m_contig_n)
+
+#genome
+ge_p_align = ge_total/ge_contig_n *100
+sprintf("Percent of genome reference that aligned: %f%%: %d/%d", ge_p_align, ge_total, ge_contig_n)
+
+#old_genome
+og_p_align = og_total/og_contig_n *100
+sprintf("Percent of old_genome reference that aligned: %f%%: %d/%d", og_p_align, og_total, og_contig_n)
+```
+
+
+```{r}
+#percent of each reference that aligned to sw
+
+#gill
+cg_p_align_sw = cg_total_sw/cg_contig_n *100
+sprintf("Percent of gill reference that aligned to sw: %f%%: %d/%d", cg_p_align_sw, cg_total_sw, cg_contig_n)
+
+#meta
+m_p_align_sw = m_total_sw/m_contig_n *100
+sprintf("Percent of meta reference that aligned to sw: %f%%: %d/%d", m_p_align_sw, m_total_sw, m_contig_n)
+
+#genome
+ge_p_align_sw = ge_total_sw/ge_contig_n *100
+sprintf("Percent of genome reference that aligned to sw: %f%%: %d/%d", ge_p_align_sw, ge_total_sw, ge_contig_n)
+
+#old_genome
+og_p_align_sw = og_total_sw/og_contig_n *100
+sprintf("Percent of old_genome reference that aligned to sw: %f%%: %d/%d", og_p_align_sw, og_total_sw, og_contig_n)
+```
+
+
+
+
+```{r}
+#total number of unique subjects in database that aligned to each reference
+
+##sw
+#gill
+sw_cg_n = length(unique(gill_sw$sseqid))
+#meta
+sw_m_n = length(unique(meta_sw$sseqid))
+#genome
+sw_ge_n = length(unique(genome_sw$sseqid))
+#old_genome
+sw_og_n = length(unique(old_genome_sw$sseqid))
+
+##nr
+#gill
+nr_cg_n = length(unique(gill_nr$sseqid))
+#meta
+nr_m_n = length(unique(meta_nr$sseqid))
+#genome
+nr_ge_n = length(unique(genome_nr$sseqid))
+#old_genome
+nr_og_n = length(unique(old_genome_nr$sseqid))
+```
+
+
+```{r}
+#number of subjects in database that aligned to one reference but not the other
+
+##sw
+
+#sw, gill but not meta
+sw_cg_m_n = length(setdiff(unique(gill_sw$sseqid), (unique(meta_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to gill but not meta: %d/%d (%f%%)", sw_cg_m_n, sw_cg_n, sw_cg_m_n/sw_cg_n*100)
+
+#sw, gill but not genome
+sw_cg_ge_n = length(setdiff(unique(gill_sw$sseqid), (unique(genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to gill but not genome: %d/%d (%f%%)", sw_cg_ge_n, sw_cg_n, sw_cg_ge_n/sw_cg_n*100)
+
+#sw, gill but not genome
+sw_cg_og_n = length(setdiff(unique(gill_sw$sseqid), (unique(old_genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to gill but not old_genome: %d/%d (%f%%)", sw_cg_og_n, sw_cg_n, sw_cg_og_n/sw_cg_n*100)
+
+#print space to break up output
+cat("\n")
+
+#sw, meta but not gill
+sw_m_cg_n = length(setdiff(unique(meta_sw$sseqid), (unique(gill_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to meta but not gill: %d/%d (%f%%)", sw_m_cg_n, sw_m_n, sw_m_cg_n/sw_m_n*100)
+
+#sw, meta but not genome
+sw_m_ge_n = length(setdiff(unique(meta_sw$sseqid), (unique(genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to meta but not genome: %d/%d (%f%%)", sw_m_ge_n, sw_m_n, sw_m_ge_n/sw_m_n*100)
+
+#sw, meta but not old_genome
+sw_m_og_n = length(setdiff(unique(meta_sw$sseqid), (unique(old_genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to meta but not old_genome: %d/%d (%f%%)", sw_m_og_n, sw_m_n, sw_m_og_n/sw_m_n*100)
+
+#print space to break up output
+cat("\n")
+
+#sw, genome but not gill
+sw_ge_cg_n = length(setdiff(unique(genome_sw$sseqid), (unique(gill_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to genome but not gill: %d/%d (%f%%)", sw_ge_cg_n, sw_ge_n, sw_ge_cg_n/sw_ge_n*100)
+
+#sw, genome but not meta
+sw_ge_m_n = length(setdiff(unique(genome_sw$sseqid), (unique(meta_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to genome but not meta: %d/%d (%f%%)", sw_ge_m_n, sw_ge_n, sw_ge_m_n/sw_ge_n*100)
+
+#sw, genome but not old_genome
+sw_ge_og_n = length(setdiff(unique(genome_sw$sseqid), (unique(old_genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to genome but not old_genome: %d/%d (%f%%)", sw_ge_og_n, sw_ge_n, sw_ge_og_n/sw_ge_n*100)
+
+#print space to break up output
+cat("\n")
+
+#sw, old_genome but not gill
+sw_og_cg_n = length(setdiff(unique(old_genome_sw$sseqid), (unique(gill_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to old_genome but not gill: %d/%d (%f%%)", sw_og_cg_n, sw_og_n, sw_og_cg_n/sw_og_n*100)
+
+#sw, old_genome but not meta
+sw_og_m_n = length(setdiff(unique(old_genome_sw$sseqid), (unique(meta_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to old_genome but not meta: %d/%d (%f%%)", sw_og_m_n, sw_og_n, sw_og_m_n/sw_og_n*100)
+
+#sw, old_genome but not genome
+sw_og_ge_n = length(setdiff(unique(old_genome_sw$sseqid), (unique(genome_sw$sseqid))))
+sprintf("Number of subjects in sw that aligned to old_genome but not genome: %d/%d (%f%%)", sw_og_ge_n, sw_og_n, sw_og_ge_n/sw_og_n*100)
+```
+
+```{r}
+#total number of unique subjects in database that aligned to each reference, for datasets with only one match per contig reported
+
+##sw
+#gill
+sw_u_cg_n = length(unique(gill_sw_unique$sseqid))
+sw_u_cg_n
+
+#meta
+sw_u_m_n = length(unique(meta_sw_unique$sseqid))
+sw_u_m_n
+
+#genome
+sw_u_ge_n = length(unique(genome_sw_unique$sseqid))
+sw_u_ge_n
+```
+
+
+
+
+```{r}
+#number of subjects in database that aligned to one reference but not the other with only one alignment reported per contig
+
+#sw, unique, gill but not meta
+sw_u_cg_m_n = length(setdiff(unique(gill_sw_unique$sseqid), (unique(meta_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique gill but not unique meta: %d/%d (%f%%)", sw_u_cg_m_n, sw_u_cg_n, sw_u_cg_m_n/sw_u_cg_n*100)
+
+#sw, unique, gill but not genome
+sw_u_cg_ge_n = length(setdiff(unique(gill_sw_unique$sseqid), (unique(genome_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique gill but not unique genome: %d/%d (%f%%)", sw_u_cg_ge_n, sw_u_cg_n, sw_u_cg_ge_n/sw_u_cg_n*100)
+
+cat("\n")
+
+#sw, unique, meta but not gill
+sw_u_m_cg_n = length(setdiff(unique(meta_sw_unique$sseqid), (unique(gill_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique meta but not unique gill: %d/%d (%f%%)", sw_u_m_cg_n, sw_u_m_n, sw_u_m_cg_n/sw_u_m_n*100)
+
+#sw, unique, meta but not genome
+sw_u_m_ge_n = length(setdiff(unique(meta_sw_unique$sseqid), (unique(genome_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique meta but not unique genome: %d/%d (%f%%)", sw_u_m_ge_n, sw_u_m_n, sw_u_m_ge_n/sw_u_m_n*100)
+
+cat("\n")
+
+#sw, unique, genome but not gill
+sw_u_ge_cg_n = length(setdiff(unique(genome_sw_unique$sseqid), (unique(gill_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique genome but not unique gill: %d/%d (%f%%)", sw_u_ge_cg_n, sw_u_ge_n, sw_u_ge_cg_n/sw_u_ge_n*100)
+
+#sw, unique, genome but not meta
+sw_u_ge_m_n = length(setdiff(unique(genome_sw_unique$sseqid), (unique(meta_sw_unique$sseqid))))
+sprintf("Number of subjects in sw that aligned to unique genome but not unique meta: %d/%d (%f%%)", sw_u_ge_m_n, sw_u_ge_n, sw_u_ge_m_n/sw_u_ge_n*100)
+```
+
+
+
+
+```{r}
+#total number of subjects in database that aligned to each reference, for datasets with only the top 10% of matches per contig reported
+
+##sw
+#gill
+sw_10_cg_n = length(unique(gill_sw_10$sseqid))
+sw_10_cg_n
+
+#meta
+sw_10_m_n = length(unique(meta_sw_10$sseqid))
+sw_10_m_n
+
+#genome
+sw_10_ge_n = length(unique(genome_sw_10$sseqid))
+sw_10_ge_n
+```
+
+
+
+
+```{r}
+#number of subjects in database that aligned to one reference but not the other with only the top 10% of alignments reported per contig
+
+#sw, top 10%, gill but not meta
+sw_10_cg_m_n = length(setdiff(unique(gill_sw_10$sseqid), (unique(meta_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% gill but not top 10%% meta: %d/%d (%f%%)", sw_10_cg_m_n, sw_10_cg_n, sw_10_cg_m_n/sw_10_cg_n*100)
+
+#sw, top 10%, gill but not genome
+sw_10_cg_ge_n = length(setdiff(unique(gill_sw_10$sseqid), (unique(genome_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% gill but not top 10%% genome: %d/%d (%f%%)", sw_10_cg_ge_n, sw_10_cg_n, sw_10_cg_ge_n/sw_10_cg_n*100)
+
+cat("\n")
+
+#sw, top 10%, meta but not gill
+sw_10_m_cg_n = length(setdiff(unique(meta_sw_10$sseqid), (unique(gill_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% meta but not top 10%% gill: %d/%d (%f%%)", sw_10_m_cg_n, sw_10_m_n, sw_10_m_cg_n/sw_10_m_n*100)
+
+#sw, top 10%, meta but not genome
+sw_10_m_ge_n = length(setdiff(unique(meta_sw_10$sseqid), (unique(genome_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% meta but not top 10%% genome: %d/%d (%f%%)", sw_10_m_ge_n, sw_10_m_n, sw_10_m_ge_n/sw_10_m_n*100)
+
+cat("\n")
+
+#sw, top 10%, genome but not gill
+sw_10_ge_cg_n = length(setdiff(unique(genome_sw_10$sseqid), (unique(gill_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% genome but not top 10%% gill: %d/%d (%f%%)", sw_10_ge_cg_n, sw_10_ge_n, sw_10_ge_cg_n/sw_10_ge_n*100)
+
+#sw, top 10%, genome but not meta
+sw_10_ge_m_n = length(setdiff(unique(genome_sw_10$sseqid), (unique(meta_sw_10$sseqid))))
+sprintf("Number of subjects in sw that aligned to top 10%% genome but not top 10%% meta: %d/%d (%f%%)", sw_10_ge_m_n, sw_10_ge_n, sw_10_ge_m_n/sw_10_ge_n*100)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

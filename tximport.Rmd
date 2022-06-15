@@ -1,0 +1,201 @@
+---
+title: "tximport"
+output:
+  html_notebook: default
+params:
+  install: 0
+  out: ""
+  input_samples: ""
+  regex: ""
+  gtm: "..\\annotation\\gene_trans_map.csv"
+---
+
+
+```{r}
+#if we want to install the package. Set to 1 to install
+if(params$install == 1){
+  if (!require("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+
+  BiocManager::install("tximport")
+}
+```
+
+```{r}
+library(tximport)
+```
+
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples = samples$Name
+samples
+```
+
+
+
+```{r}
+#read in gene_trans_map
+gene_trans_map = read.csv(params$gtm)
+gene_trans_map = gene_trans_map[,2:3]
+```
+
+
+```{r}
+
+
+#create vector pointing to files
+files = file.path("..\\mapping", samples, "quant.sf")
+names(files) = samples
+
+#check to make sure all files exist
+all(file.exists(files))
+```
+
+```{r}
+txi = tximport(files, type = "salmon", tx2gene = gene_trans_map, ignoreTxVersion = TRUE)# countsFromAbundance = "lengthScaledTPM", ignoreTxVersion = TRUE)
+```
+
+
+```{r}
+txi = txi[2:3]
+write.csv(txi, params$out)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

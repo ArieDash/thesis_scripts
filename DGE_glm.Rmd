@@ -1,0 +1,425 @@
+---
+title: "GLM DGE"
+output:
+  pdf_document: default
+params:
+  input_samples: ""
+  regex: ""
+  input_counts: ""
+  install: 0
+  p : 0.05
+  lfc : 1
+  out : ""
+---
+
+
+
+```{r}
+if(params$install == 1){
+  if (!require("BiocManager", quietly = TRUE))
+      install.packages("BiocManager")
+
+  BiocManager::install("edgeR")
+}
+```
+
+```{r}
+library(edgeR)
+library(pheatmap)
+```
+
+
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples
+```
+
+
+```{r}
+#for unscaled counts and length offset
+
+#read in txi data (counts and length offset)
+c_l = read.csv(params$input_counts)
+#set rownames to geneids
+rownames(c_l) = c_l$X
+#remove column containing geneids
+c_l = c_l[,-1]
+#extract counts and lengths tables from dataframe
+cts = c_l[,1:length(samples$Name)]
+colnames(cts) = samples$Name
+
+normMat = c_l[,(length(samples$Name)+1):(2*length(samples$Name))]
+colnames(normMat) = samples$Name
+#convert lengths from dataframe to matrix so tximport provided code works
+normMat = as.matrix(normMat)
+```
+
+
+
+```{r}
+#for unscaled counts and length offset
+
+#follow steps from tximport vignette to prep data for edgeR
+
+# Obtaining per-observation scaling factors for length, adjusted to avoid
+# changing the magnitude of the counts.
+normMat <- normMat/exp(rowMeans(log(normMat)))
+normCts <- cts/normMat
+
+# Computing effective library sizes from scaled counts, to account for
+# composition biases between samples. 
+eff_lib <- calcNormFactors(normCts) * colSums(normCts)
+
+# Combining effective library sizes with the length factors, and calculating
+# offsets for a log-link GLM.
+normMat <- sweep(normMat, 2, eff_lib, "*")
+normMat <- log(normMat)
+
+# Creating a DGEList object for use in edgeR.
+group = factor(samples$Treatment)
+y <- DGEList(counts = cts, group = group)
+y <- scaleOffset(y, normMat)
+
+# filtering using the design information
+keep = filterByExpr(y)
+y <- y[keep, ]
+```
+
+
+
+
+
+```{r}
+#plot samples, look for outliers
+points = c(15,16,17,18,19)
+colors = c("green", "blue", "red", "orange", "purple")
+plotMDS(y, col = colors[group], pch = points[group], labels = colnames(y))
+legend("topleft", legend = levels(group), col = colors, pch = points)
+```
+
+```{r}
+y$samples
+```
+
+
+```{r}
+design = model.matrix(~group, data = y$samples)
+design
+```
+
+```{r}
+#calculate dispersion factors
+y = estimateDisp(y, design, robust = TRUE)
+plotBCV(y)
+```
+
+
+```{r}
+#fit GLM
+fit = glmFit(y, design, robust = TRUE)
+
+lrt = glmLRT(fit, coef = 2:length(colnames(design)))
+topTags(lrt)
+summary(decideTests(lrt))
+```
+
+
+
+```{r}
+#recalculate the design matrix to exclude the intercept
+design = model.matrix(~0+group, data = y$samples)
+colnames(design) = levels(y$samples$group)
+design
+```
+
+```{r}
+#calculate dispersion factors
+y = estimateDisp(y, design, robust = TRUE)
+plotBCV(y)
+```
+
+```{r}
+#make heatmap of all samples
+cpms = cpm(y, offset = y$offset, log = F)
+cols = colorRampPalette(c("green", "black", "red"))(300)
+
+#make dataframe to indicate which samples were in which treatment for heatmap
+col_anno = data.frame(treatment = samples$Treatment)
+rownames(col_anno) = samples$Name
+
+#define annotation colors for each treatment
+anno_color = list(treatment = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289"))
+
+pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap", color = cols, annotation_colors = anno_color)
+```
+
+
+
+```{r}
+#make contrasts
+contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
+```
+
+
+```{r}
+volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="Volcano plot", pch=20, y = F){
+  if(y){
+   plot(FC, -1*log10(FDR), col = ifelse(FDR<=0.05, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20, ylim = c(0,10)) 
+  }
+  else{
+    plot(FC, -1*log10(FDR), col = ifelse(FDR<=0.05, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20)
+  }
+}
+```
+
+
+
+```{r}
+make_heatmap = function(cpms, samples = samples, sig_genes, t1, t2, main, color){
+  
+  #select only samples that were subjected to compared treatments
+  samples_comp = subset(samples, Treatment == t1 | Treatment == t2)
+  #subset matrix to include only significantly differentially expressed genes for the desired samples
+  sig_cpm = cpms[rownames(cpms) %in% sig_genes, colnames(cpms) %in% samples_comp$Name]
+  #make dataframe to indicate which samples were in which treatment for heatmap
+  col_anno = data.frame(treatment = samples_comp$Treatment)
+  rownames(col_anno) = samples_comp$Name
+  #define annotation colors for each treatment
+  anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
+  #get only elements of list that match current treatments so that legend does not include extraneous colors
+  anno_color = list(treatment = anno_color_opts[c(t1,t2)])
+  #make heatmap
+  pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = anno_color)
+}
+```
+
+
+
+```{r}
+#fit GLM
+fit = glmFit(y, design, robust = TRUE)
+
+#Test for DEG between any two groups
+
+##UvsC
+lrt_UC = glmLRT(fit, contrast = contrasts[,"UvsC"])
+topTags(lrt_UC)
+tt_UC = topTags(lrt_UC, n = NULL)$table
+summary(decideTests(lrt_UC))
+plotMD(lrt_UC)
+abline(h = c(-1,1), col = "blue")
+#volcano plots
+volcano_plot(tt_UC$logFC, tt_UC$FDR)
+volcano_plot(tt_UC$logFC, tt_UC$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+
+#heatmap
+#add column that indicates if gene is significantly differentially expressed or not
+tt_UC$threshold = tt_UC$FDR < params$p & abs(tt_UC$logFC) > params$lfc
+#get names of genes that are significantly differentially expressed
+sig_genes_UC = subset(tt_UC, threshold == TRUE)[,-ncol(tt_UC)]
+#make heatmap
+make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UC), t1 = "U", t2 = "C", main = "UvsC significant DEG heatmap", color = cols)
+
+#save significant DEGs to file
+#Upregulated genes
+write.csv(subset(sig_genes_UC, logFC > 0), paste0(params$out, params$regex, "_UvsC_P", params$p, "C", params$lfc, "_UP.csv"))
+#Downregulated genes
+write.csv(subset(sig_genes_UC, logFC < 0), paste0(params$out, params$regex, "_UvsC_P", params$p, "C", params$lfc, "_DOWN.csv"))
+#All significant genes
+write.csv(sig_genes_UC, paste0(params$out, params$regex, "_UvsC_P", params$p, "C", params$lfc, "_DE.csv"))
+
+
+##RvsC
+lrt_RC = glmLRT(fit, contrast = contrasts[,"RvsC"])
+topTags(lrt_RC)
+tt_RC = topTags(lrt_RC, n = NULL)$table
+summary(decideTests(lrt_RC))
+plotMD(lrt_RC)
+abline(h = c(-1,1), col = "blue")
+#volcano plots
+volcano_plot(tt_RC$logFC, tt_RC$FDR)
+volcano_plot(tt_RC$logFC, tt_RC$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+
+#heatmap
+#add column that indicates if gene is significantly differentially expressed or not
+tt_RC$threshold = tt_RC$FDR < params$p & abs(tt_RC$logFC) > params$lfc
+#get names of genes that are significantly differentially expressed
+sig_genes_RC = subset(tt_RC, threshold == TRUE)[,-ncol(tt_RC)]
+#make heatmap
+make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_RC), t1 = "R", t2 = "C", main = "RvsC significant DEG heatmap", color = cols)
+
+#save significant DEGs to file
+#Upregulated genes
+write.csv(subset(sig_genes_RC, logFC > 0), paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_UP.csv"))
+#Downregulated genes
+write.csv(subset(sig_genes_RC, logFC < 0), paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_DOWN.csv"))
+#All significant genes
+write.csv(sig_genes_RC, paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_DE.csv"))
+
+
+##UvsR
+lrt_UR = glmLRT(fit, contrast = contrasts[,"UvsR"])
+topTags(lrt_UR)
+tt_UR = topTags(lrt_UR, n = NULL)$table
+summary(decideTests(lrt_UR))
+plotMD(lrt_UR)
+abline(h = c(-1,1), col = "blue")
+#volcano plots
+volcano_plot(tt_UR$logFC, tt_UR$FDR)
+volcano_plot(tt_UR$logFC, tt_UR$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+
+#heatmap
+#add column that indicates if gene is significantly differentially expressed or not
+tt_UR$threshold = tt_UR$FDR < params$p & abs(tt_UR$logFC) > params$lfc
+#get names of genes that are significantly differentially expressed
+sig_genes_UR = subset(tt_UR, threshold == TRUE)[,-ncol(tt_UR)]
+#make heatmap
+make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UR), t1 = "U", t2 = "R", main = "UvsR significant DEG heatmap", color = cols)
+
+#save significant DEGs to file
+#Upregulated genes
+write.csv(subset(sig_genes_UR, logFC > 0), paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_UP.csv"))
+#Downregulated genes
+write.csv(subset(sig_genes_UR, logFC < 0), paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_DOWN.csv"))
+#All significant genes
+write.csv(sig_genes_UR, paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_DE.csv"))
+```
+
+
+
+```{r}
+#make heatmap of significant genes shared across all treatments
+
+#get list of shared DEGs
+sig_genes = intersect(c(sig_genes_UC, sig_genes_RC), sig_genes_UR)
+#only do this if there are shared DE genes
+if(length(sig_genes) > 0){
+  #subset matrix to include only significantly differentially expressed genes
+  sig_cpm = cpms[rownames(cpms) %in% sig_genes,  colnames(cpms) %in% samples$Name]
+  #make dataframe to indicate which samples were in which treatment for heatmap
+  col_anno = data.frame(treatment = samples$Treatment)
+  rownames(col_anno) = samples$Name
+  #define annotation colors for each treatment
+  anno_color = list(treatment = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289"))
+  #make heatmap
+  pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Shared DEG heatmap", color = cols, annotation_colors = anno_color)
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
