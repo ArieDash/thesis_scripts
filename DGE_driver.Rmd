@@ -13,27 +13,26 @@ output:
 
 #input variable names for use in script
 
-#Regex of samples names we want to keep
-regex = "CL"
-
 #types:
 #samples: all samples
 #no_batch: all samples except those with batch effects
 #batch: all C, U, and R samples, including those with batch effects
 #red: Reduced. Only C, U, and R samples that don't show batch effects
 
-#type = "all"
-#type = "no_batch"
-#type = "batch"
-type = "red"
+types = c()
 
-#file to write csv to
-out = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
 
-#names of file with salmon output folders
-input_samples = input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+#Regex of samples names we want to keep
+tissues = c()
 
-
+tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
 
 #install tximport?
 install = 0
@@ -41,7 +40,23 @@ install = 0
 #location of gene_trans_map
 gtm = "..\\annotation\\gene_trans_map.csv"
 
-rmarkdown::render(input = "tximport.Rmd", params = list(out = out, input_samples = input_samples, regex = regex))
+for(regex in tissues){
+  for(type in types){
+
+    #file to write csv to
+    out = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+
+    #names of file with salmon output folders
+    input_samples = input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+
+
+    rmarkdown::render(input = "tximport.Rmd", params = list(out = out, input_samples = input_samples, regex = regex))
+
+    install = 0
+    
+  }
+}
+
 ```
 
 
