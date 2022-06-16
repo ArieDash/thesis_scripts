@@ -164,7 +164,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 
 ```{r}
 #make contrasts
-if("E" %in% samples$Treatments){
+if("E" %in% samples$Treatment){
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, FvsS=(U+R)/2-(C+E+M)/3, levels = design)
 } else{
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
@@ -187,19 +187,18 @@ volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="V
 
 
 ```{r}
-make_heatmap = function(cpms, samples = samples, sig_genes, t1, t2, main, color, annotation_color){
+make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_color){
   
-  #select only samples that were subjected to compared treatments
-  samples_comp = subset(samples, Treatment == t1 | Treatment == t2)
   #subset matrix to include only significantly differentially expressed genes for the desired samples
   sig_cpm = cpms[rownames(cpms) %in% sig_genes, colnames(cpms) %in% samples_comp$Name]
   #make dataframe to indicate which samples were in which treatment for heatmap
   col_anno = data.frame(treatment = samples_comp$Treatment)
   rownames(col_anno) = samples_comp$Name
-  #get only elements of list that match current treatments so that legend does not include extraneous colors
-  anno_color = list(treatment = annotation_color[c(t1,t2)])
   #make heatmap
-  pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = anno_color)
+  if(length(sig_cpm) > 0){
+    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = anno_color)
+  }
+  
 }
 ```
 
@@ -232,11 +231,11 @@ run_test = function(fit, contrast){
 write_sig_genes = function(sig_genes, comparison){
   #save significant DEGs to file
   #Upregulated genes
-  write.csv(subset(sig_genes, logFC > 0), paste0(params$out, params$regex, comparison, "_P", params$p, "C", params$lfc, "_UP.csv"))
+  write.csv(subset(sig_genes, logFC > 0), paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_UP.csv"))
   #Downregulated genes
-  write.csv(subset(sig_genes, logFC < 0), paste0(params$out, params$regex, comparison, "_P", params$p, "C", params$lfc, "_DOWN.csv"))
+  write.csv(subset(sig_genes, logFC < 0), paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_DOWN.csv"))
   #All significant genes
-  write.csv(sig_genes, paste0(params$out, params$regex, comparison, "_P", params$p, "C", params$lfc, "_DE.csv"))
+  write.csv(sig_genes, paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_DE.csv"))
 }
 ```
 
@@ -254,66 +253,44 @@ anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
 sig_genes_UC = run_test(fit, "UvsC")
 
 #make heatmap
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UC), t1 = "U", t2 = "C", main = "UvsC significant DEG heatmap", color = cols, annotation_color = anno_color_opts)
+#get only elements of list that match current treatments so that legend does not include extraneous colors
+anno_color = list(treatment = anno_color_opts[c("U","C")])
+
+#select only samples that were subjected to compared treatments
+samples_comp = subset(samples, Treatment == "U" | Treatment == "C")
+
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UC), main = "UvsC significant DEG heatmap", color = cols, annotation_color = anno_color)
 
 #save significant DEGs to file
 write_sig_genes(sig_genes_UC, "UvsC")
 
 
 ##RvsC
-lrt_RC = glmLRT(fit, contrast = contrasts[,"RvsC"])
-topTags(lrt_RC)
-tt_RC = topTags(lrt_RC, n = NULL)$table
-summary(decideTests(lrt_RC))
-plotMD(lrt_RC)
-abline(h = c(-1,1), col = "blue")
-#volcano plots
-volcano_plot(tt_RC$logFC, tt_RC$FDR)
-volcano_plot(tt_RC$logFC, tt_RC$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+sig_genes_RC = run_test(fit, "RvsC")
 
-#heatmap
-#add column that indicates if gene is significantly differentially expressed or not
-tt_RC$threshold = tt_RC$FDR < params$p & abs(tt_RC$logFC) > params$lfc
-#get names of genes that are significantly differentially expressed
-sig_genes_RC = subset(tt_RC, threshold == TRUE)[,-ncol(tt_RC)]
 #make heatmap
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_RC), t1 = "R", t2 = "C", main = "RvsC significant DEG heatmap", color = cols, annotation_color = anno_color_opts)
+anno_color = list(treatment = anno_color_opts[c("R","C")])
+
+samples_comp = subset(samples, Treatment == "R" | Treatment == "C")
+
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_RC), main = "RvsC significant DEG heatmap", color = cols, annotation_color = anno_color)
 
 #save significant DEGs to file
-#Upregulated genes
-write.csv(subset(sig_genes_RC, logFC > 0), paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_UP.csv"))
-#Downregulated genes
-write.csv(subset(sig_genes_RC, logFC < 0), paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_DOWN.csv"))
-#All significant genes
-write.csv(sig_genes_RC, paste0(params$out, params$regex, "_RvsC_P", params$p, "C", params$lfc, "_DE.csv"))
+write_sig_genes(sig_genes_RC, "RvsC")
 
 
 ##UvsR
-lrt_UR = glmLRT(fit, contrast = contrasts[,"UvsR"])
-topTags(lrt_UR)
-tt_UR = topTags(lrt_UR, n = NULL)$table
-summary(decideTests(lrt_UR))
-plotMD(lrt_UR)
-abline(h = c(-1,1), col = "blue")
-#volcano plots
-volcano_plot(tt_UR$logFC, tt_UR$FDR)
-volcano_plot(tt_UR$logFC, tt_UR$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+sig_genes_UR = run_test(fit, "UvsR")
 
-#heatmap
-#add column that indicates if gene is significantly differentially expressed or not
-tt_UR$threshold = tt_UR$FDR < params$p & abs(tt_UR$logFC) > params$lfc
-#get names of genes that are significantly differentially expressed
-sig_genes_UR = subset(tt_UR, threshold == TRUE)[,-ncol(tt_UR)]
 #make heatmap
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UR), t1 = "U", t2 = "R", main = "UvsR significant DEG heatmap", color = cols, annotation_color = anno_color_opts)
+anno_color = list(treatment = anno_color_opts[c("U","R")])
+
+samples_comp = subset(samples, Treatment == "U" | Treatment == "R")
+
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UR), main = "UvsR significant DEG heatmap", color = cols, annotation_color = anno_color)
 
 #save significant DEGs to file
-#Upregulated genes
-write.csv(subset(sig_genes_UR, logFC > 0), paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_UP.csv"))
-#Downregulated genes
-write.csv(subset(sig_genes_UR, logFC < 0), paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_DOWN.csv"))
-#All significant genes
-write.csv(sig_genes_UR, paste0(params$out, params$regex, "_UvsR_P", params$p, "C", params$lfc, "_DE.csv"))
+write_sig_genes(sig_genes_UR, "UvsR")
 ```
 
 
@@ -322,18 +299,15 @@ write.csv(sig_genes_UR, paste0(params$out, params$regex, "_UvsR_P", params$p, "C
 #make heatmap of significant genes shared across all treatments
 
 #get list of shared DEGs
-sig_genes = intersect(c(sig_genes_UC, sig_genes_RC), sig_genes_UR)
+sig_genes = intersect(c(rownames(sig_genes_UC), rownames(sig_genes_RC)), rownames(sig_genes_UR))
+
 #only do this if there are shared DE genes
 if(length(sig_genes) > 0){
-  #subset matrix to include only significantly differentially expressed genes
-  sig_cpm = cpms[rownames(cpms) %in% sig_genes,  colnames(cpms) %in% samples$Name]
-  #make dataframe to indicate which samples were in which treatment for heatmap
-  col_anno = data.frame(treatment = samples$Treatment)
-  rownames(col_anno) = samples$Name
-  #define annotation colors for each treatment
-  anno_color = list(treatment = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289"))
-  #make heatmap
-  pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Shared DEG heatmap", color = cols, annotation_colors = anno_color)
+  samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
+  
+  anno_color = list(treatment = anno_color_opts)
+  
+  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes, main = "shared DEG heatmap", color = cols, annotation_color = anno_color)
 }
 ```
 
@@ -343,53 +317,24 @@ if(length(sig_genes) > 0){
 if("E" %in% samples$Treatment){
   
   ##UvsE
-  lrt_UE = glmLRT(fit, contrast = contrasts[,"UvsE"])
-  topTags(lrt_UE)
-  tt_UE = topTags(lrt_UE, n = NULL)$table
-  summary(decideTests(lrt_UE))
-  plotMD(lrt_UE)
-  abline(h = c(-1,1), col = "blue")
-  #volcano plots
-  volcano_plot(tt_UE$logFC, tt_UE$FDR)
-  volcano_plot(tt_UE$logFC, tt_UE$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
-
-  #heatmap
-  #add column that indicates if gene is significantly differentially expressed or not
-  tt_UE$threshold = tt_UE$FDR < params$p & abs(tt_UE$logFC) > params$lfc
-  #get names of genes that are significantly differentially expressed
-  sig_genes_UE = subset(tt_UE, threshold == TRUE)[,-ncol(tt_UE)]
+  sig_genes_UE = run_test(fit, "UvsE")
   
   #add options to annotation colors
   anno_color_opts = c(anno_color_opts, E = "thistle1")
   
-  #make heatmap
-  make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UE), t1 = "U", t2 = "E", main = "UvsE significant DEG heatmap", color = cols)
+  anno_color = list(treatment = anno_color_opts[c("U","E")])
+  
+  samples_comp = subset(samples, Treatment == "U" | Treatment == "E")
+
+  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UE), main = "UvsE significant DEG heatmap", color = cols, annotation_color = anno_color)
   
   #save significant DEGs to file
-  #Upregulated genes
-  write.csv(subset(sig_genes_UE, logFC > 0), paste0(params$out, params$regex, "_UvsE_P", params$p, "C", params$lfc, "_UP.csv"))
-  #Downregulated genes
-  write.csv(subset(sig_genes_UE, logFC < 0), paste0(params$out, params$regex, "_UvsE_P", params$p, "C", params$lfc, "_DOWN.csv"))
-  #All significant genes
-  write.csv(sig_genes_UE, paste0(params$out, params$regex, "_UvsE_P", params$p, "C", params$lfc, "_DE.csv"))
+  write_sig_genes(sig_genes_UE, "UvsE")
   
   
   ##FvsS
-  lrt_FS = glmLRT(fit, contrast = contrasts[,"FvsS"])
-  topTags(lrt_FS)
-  tt_FS = topTags(lrt_FS, n = NULL)$table
-  summary(decideTests(lrt_FS))
-  plotMD(lrt_FS)
-  abline(h = c(-1,1), col = "blue")
-  #volcano plots
-  volcano_plot(tt_FS$logFC, tt_FS$FDR)
-  volcano_plot(tt_FS$logFC, tt_FS$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+  sig_genes_FS = run_test(fit, "FvsS")
 
-  #heatmap
-  #add column that indicates if gene is significantly differentially expressed or not
-  tt_FS$threshold = tt_FS$FDR < params$p & abs(tt_FS$logFC) > params$lfc
-  #get names of genes that are significantly differentially expressed
-  sig_genes_FS = subset(tt_FS, threshold == TRUE)[,-ncol(tt_FS)]
   #rename samples so that treatments are either fluctuating or static
   samples[samples == "E" | samples == "M" | samples == "C"] = "S"
   samples[samples == "U" | samples == "R"] = "Fl"
@@ -397,16 +342,13 @@ if("E" %in% samples$Treatment){
   #add options to annotation colors
   anno_color_opts = c(anno_color_opts, Fl = "gold3", S = "turquoise2")
   
+  anno_color = list(treatment = anno_color_opts[c("Fl","S")])
+  
   #make heatmap
-  make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_FS), t1 = "F", t2 = "S", main = "FvsS significant DEG heatmap", color = cols)
+  make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes_FS), main = "FvsS DEG heatmap", color = cols, annotation_color = anno_color)
   
   #save significant DEGs to file
-  #Upregulated genes
-  write.csv(subset(sig_genes_FS, logFC > 0), paste0(params$out, params$regex, "_FvsS_P", params$p, "C", params$lfc, "_UP.csv"))
-  #Downregulated genes
-  write.csv(subset(sig_genes_FS, logFC < 0), paste0(params$out, params$regex, "_FvsS_P", params$p, "C", params$lfc, "_DOWN.csv"))
-  #All significant genes
-  write.csv(sig_genes_FS, paste0(params$out, params$regex, "_FvsS_P", params$p, "C", params$lfc, "_DE.csv"))
+  write_sig_genes(sig_genes_FS, "FvsS")
 }
 ```
 

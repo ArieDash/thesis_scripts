@@ -22,7 +22,7 @@ output:
 types = c()
 
 #types = append(types, "all")
-#types = append(types, "no_batch")
+types = append(types, "no_batch")
 #types = append(types, "batch")
 types = append(types, "red")
 
@@ -84,7 +84,7 @@ for(regex in tissues){
 types = c()
 
 #types = append(types, "all")
-#types = append(types, "no_batch")
+types = append(types, "no_batch")
 #types = append(types, "batch")
 types = append(types, "red")
 
@@ -96,8 +96,6 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#Path to output directory for DEG lists
-out = "..\\data_analysis\\"
 
 #if we want to install the package. Set to 1 to install
 install = 0
@@ -108,12 +106,18 @@ for(regex in tissues){
     input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
 
     input_counts = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+    
+    #Path to output directory for DEG lists
+    out = paste0("..\\data_analysis\\DE_lists\\", regex, "_", type, "_")
 
     #path to and name of output report file
     #if it errors, try using just the file name output and moving it where you want afterwards. I was having some         issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it     wrote the .tex file to the location just fine
     report_output = paste0(regex, "_", type, "_LRT.pdf")
 
-    rmarkdown::render(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document')
+    #render script in new R session to isolate it
+    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document'))
+    
+#    rmarkdown::render(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document')
   
     #we only want to install on the first iteration, so set install to 0 now
     install = 0
@@ -145,9 +149,9 @@ for(regex in tissues){
 
 types = c()
 
-types = append(types, "all")
-types = append(types, "no_batch")
-types = append(types, "batch")
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
 types = append(types, "red")
 
 #Regex of samples names we want to keep
