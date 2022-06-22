@@ -1,0 +1,203 @@
+---
+title: "R Notebook"
+output: html_notebook
+params:
+  gtm: "..\\annotation\\gene_trans_map.csv"
+  de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
+---
+
+```{r}
+library(rbioapi)
+```
+
+
+```{r}
+#read in annotation, remove some uneeded columns and then get rid of duplicates
+gtm = unique(read.csv(params$gtm)[-c(1,2)])
+```
+
+```{r}
+#read in deg list
+degs = read.csv(params$de)
+names(degs)[names(degs) == "X"] = "gene_name"
+```
+
+```{r}
+#join gtm with degs to get origin info for degs
+degs = merge(degs, gtm)
+
+#remove the "." and version number on each gene identifier for use with downstream tools
+degs$gene_name = sapply(strsplit(degs$gene_name, ".", fixed = TRUE), function(x) x[1])
+
+degs_sw = subset(degs, degs$origin == "swissprot")
+degs_sw
+```
+
+
+
+
+```{r}
+assayed_genes = sapply(strsplit(gtm$gene_name, ".", fixed = TRUE), function(x) x[1])
+de_genes = sapply(strsplit(degs$gene_name, ".", fixed = TRUE), function(x) x[1])
+gene_vector = as.integer(assayed_genes %in% de_genes)
+names(gene_vector) = assayed_genes
+head(gene_vector)
+```
+
+```{r}
+sw_genes = subset(gtm, gtm$origin == "swissprot")
+```
+
+
+```{r}
+library(reticulate)
+#py_install("pandas")
+```
+
+```{python}
+print(" ".join(r.sw_genes['gene_name']))
+```
+
+```{python}
+payload = {'query': 'A0AID1', 'columns': 'go(molecular function),go(biological process),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY)', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
+response = requests.post('https://www.uniprot.org/uploadlists/', data=payload)
+print(response.text)
+```
+
+
+
+```{python}
+import requests
+import pandas
+
+payload = {'query': " ".join(r.sw_genes['gene_name']), 'columns': 'go(molecular function),go(biological process),go(cellular component),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY),organism', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
+response = requests.post('https://www.uniprot.org/uploadlists/', data=payload)
+results = response.text.split(sep = "\n")
+rows = []
+for result in results:
+  rows.append(result.split("\t"))
+
+#get rid of metadata at top and blank line at end
+rows = rows[1:-1]
+
+sw_gene_info = pandas.DataFrame(rows, columns = ['go(molecular_function)', 'go(biological_process)', 'go(cellular_component)', 'keywords', 'tissue_specificity', 'pathway', 'organism', 'gene_name'])
+
+
+```
+
+```{r}
+write.csv(py$sw_gene_info, "..\\annotation\\sw_gene_info.csv")
+```
+
+
+```{r}
+nr_genes = subset(gtm, gtm$origin == "nr")
+```
+
+
+```{python}
+import xml.etree.ElementTree as ET
+print(r.nr_genes["gene_name"][1])
+response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"epost.fcgi?db=protein&id="+r.nr_genes["gene_name"][1])
+parser = ET.fromstring(response.text)
+qkey = parser.find("QueryKey").text
+webenv = parser.find("WebEnv").text
+
+print(qkey)
+print(webenv)
+
+response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"esummary.fcgi?db=protein&query_key="+qkey+"&WebEnv="+webenv)
+print(response.text)
+
+response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"efetch.fcgi?db=protein&query_key="+qkey+"&WebEnv="+webenv+"&rettype=xml&retmode=xml")
+parser = ET.fromstring(response.text)
+print(parser.find("GBSeq").find("GBSeq_definition").text)
+for x in parser.find("GBSeq").find("GBSeq_feature-table").find("GBFeature").find("GBFeature_quals").findall("GBQualifier"):
+  print(x.find("GBQualifier_name").text)
+  print(x.find("GBQualifier_value").text)
+print(response.text)
+```
+
+
+```{r}
+merge(degs_sw, py$sw_gene_info, by = "gene_name")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
