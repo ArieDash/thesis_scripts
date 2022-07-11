@@ -48,10 +48,14 @@ head(gene_vector)
 sw_genes = subset(gtm, gtm$origin == "swissprot")
 ```
 
+```{r}
+write.csv(sw_genes$gene_name, "C:\\Users\\Arie\\Desktop\\sw_genes.csv")
+```
+
 
 ```{r}
 library(reticulate)
-#py_install("pandas")
+#py_install("")
 ```
 
 ```{python}
@@ -59,9 +63,164 @@ print(" ".join(r.sw_genes['gene_name']))
 ```
 
 ```{python}
-payload = {'query': 'A0AID1', 'columns': 'go(molecular function),go(biological process),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY)', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
-response = requests.post('https://www.uniprot.org/uploadlists/', data=payload)
+import json
+payload = {'ids': 'A0AID1', 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB-Swiss-Prot'}#'fields': 'id,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway', 'format':'tsv', 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB_AC-ID'}
+response = requests.post('https://rest.uniprot.org/idmapping/run', data=payload)
+print(json.loads(response.text))
+
+response = requests.get('https://rest.uniprot.org/idmapping/stream/'+json.loads(response.text)["jobId"])
 print(response.text)
+```
+
+```{python}
+payload = {'query': 'A0AID1', 'fields': 'gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}#, 'from': 'ACC+ID', 'to': 'ACC'}
+response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
+print(response.text)
+```
+
+```{python}
+from SPARQLWrapper import SPARQLWrapper, JSON
+def getProtNames(accession):
+  #print(accession)  
+  mystring = '(uniprot:' + ') (uniprot:'.join(accession) + ')'
+  #print(mystring)
+  sparql = SPARQLWrapper("http://sparql.uniprot.org/sparql")
+  
+  sparql.setQuery("""
+    PREFIX uniprot: <http://purl.uniprot.org/uniprot/>
+    PREFIX up: <http://purl.uniprot.org/core/>
+
+    SELECT ?name ?tissue_name
+    WHERE
+    {
+      VALUES (?ac) {"""+mystring+"""}
+      ?ac up:mnemonic ?name .
+      ?ac up:isolatedFrom ?tissue .
+  		?tissue rdfs:label ?tissue_name
+    }
+  """) 
+  sparql.setReturnFormat(JSON)
+  results = sparql.query().convert()
+  return results
+
+```
+
+```{python}
+def getProtGO(accession):
+  mystring = '(\"' + '\") (\"'.join(accession) + '\")'
+  #print(mystring)
+  
+  sparql = SPARQLWrapper("http://sparql.uniprot.org/sparql")
+  sparql.setQuery("""
+  PREFIX up: <http://purl.uniprot.org/core/>
+  
+  
+  SELECT 
+    (CONCAT(SUBSTR(STR(?protein), 33)) AS ?uniprot)
+    (GROUP_CONCAT(?celtype; separator=";") AS ?celtypes)
+    (GROUP_CONCAT(?biotype; separator=";") AS ?biotypes)
+    (GROUP_CONCAT(?moltype; separator=";") AS ?moltypes)
+	
+  WHERE
+  {
+    VALUES (?ac) {"""+mystring+"""}
+    BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?ac)) AS ?protein)
+    ?protein a up:Protein .
+    ?protein up:classifiedWith ?goTerm .
+    #Determine if the type is biological_process
+    OPTIONAL {
+        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0008150>.
+        ?goTerm rdfs:label ?biotype .
+    }
+    #Determine if the type is cellular_component
+    OPTIONAL {
+        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0005575>.
+        ?goTerm rdfs:label ?celtype .
+    }
+    #Determine if the type is molecular_function
+    OPTIONAL {
+        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0003674> .
+        ?goTerm rdfs:label ?moltype .
+    }
+    #Filter out the uniprot keywords
+    FILTER(bound(?biotype) || bound(?celtype) || bound(?moltype))
+  
+
+  } GROUP BY ?protein
+  """)
+  sparql.setReturnFormat(JSON)
+  results = sparql.query().convert()
+  return results
+```
+
+
+```{python}
+accession = ["Q5ZLG1","Q5I598","Q28983"]
+res = getProtNames(accession)
+for r in res["results"]["bindings"]:
+  print(r["name"]["value"])
+```
+
+```{python}
+res = getProtGO(accession)
+for r in res["results"]["bindings"]:
+  print(r["uniprot"]["value"])
+  print(r["moltypes"]["value"])
+  print(r["biotypes"]["value"])
+  print(r["celtypes"]["value"])
+```
+
+```{python}
+import xmltodict
+import pprint
+import pandas
+
+
+genes = pandas.read_csv("C:\\Users\\Arie\\Desktop\\sw_genes.csv")
+print(genes)
+
+ids = " ".join(r.sw_genes['gene_name']).split(" ")
+for id in ids:
+  id = id.split('.')[0]
+print(ids)
+
+with open("C:\\Users\\Arie\\Desktop\\test.xml", 'r', encoding='utf-8') as file:
+  xml = file.read()
+
+dict = xmltodict.parse(xml)
+
+for entry in dict["uniprot"]["entry"]:
+  if(entry["accession"] in ids)
+  print(entry["accession"])
+
+print(dict["uniprot"]["entry"]["accession"])
+print(dict["uniprot"]["entry"]["gene"]["name"]["#text"])
+print(dict["uniprot"]["entry"]["organism"]["name"]["@type" == 'scientific']["#text"])
+print(dict["uniprot"]["entry"]["organism"]["name"][1]["#text"])
+print(dict["uniprot"]["entry"]["protein"]["recommendedName"]["fullName"])
+print(dict["uniprot"]["entry"]["comment"][])
+
+pprint.pprint(dict, indent=2)
+```
+
+
+```{python}
+import requests
+import pandas
+import csv
+
+ids = " ".join(r.sw_genes['gene_name']).split(" ")
+
+rows = []
+
+for id in ids:
+  payload = {'query': id.split('.')[0], 'fields': 'accession,gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}
+  response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
+  result = response.text.replace('\n', '\t').split('\t')[10:-1]
+#  result = result[10:-1]
+  rows.append(result)
+
+sw_gene_info = pandas.DataFrame(rows, columns = ['id', 'Gene Names (primary)', 'Protein names', 'Gene Ontology (molecular function)', 'Gene Ontology (biological process)', 'Gene Ontology (cellular component)', 'Keywords', 'Tissue specificity', 'Pathway', 'Organism'])
 ```
 
 
@@ -70,8 +229,10 @@ print(response.text)
 import requests
 import pandas
 
-payload = {'query': " ".join(r.sw_genes['gene_name']), 'columns': 'go(molecular function),go(biological process),go(cellular component),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY),organism', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
-response = requests.post('https://www.uniprot.org/uploadlists/', data=payload)
+#payload = {'query': " ".join(r.sw_genes['gene_name']), 'columns': 'go(molecular function),go(biological process),go(cellular component),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY),organism', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
+payload = {'query': " ".join(r.sw_genes['gene_name']), 'fields': 'gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}
+response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
+print(response.text)
 results = response.text.split(sep = "\n")
 rows = []
 for result in results:
@@ -97,8 +258,8 @@ nr_genes = subset(gtm, gtm$origin == "nr")
 
 ```{python}
 import xml.etree.ElementTree as ET
-print(r.nr_genes["gene_name"][1])
-response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"epost.fcgi?db=protein&id="+r.nr_genes["gene_name"][1])
+print(r.nr_genes["gene_name"][2])
+response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"epost.fcgi?db=protein&id="+r.nr_genes["gene_name"][2])
 parser = ET.fromstring(response.text)
 qkey = parser.find("QueryKey").text
 webenv = parser.find("WebEnv").text
@@ -106,16 +267,18 @@ webenv = parser.find("WebEnv").text
 print(qkey)
 print(webenv)
 
-response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"esummary.fcgi?db=protein&query_key="+qkey+"&WebEnv="+webenv)
-print(response.text)
+#response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"esummary.fcgi?db=protein&query_key="+qkey+"&WebEnv="+webenv)
+#print(response.text)
 
 response = requests.get('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/'+"efetch.fcgi?db=protein&query_key="+qkey+"&WebEnv="+webenv+"&rettype=xml&retmode=xml")
 parser = ET.fromstring(response.text)
 print(parser.find("GBSeq").find("GBSeq_definition").text)
+
+
 for x in parser.find("GBSeq").find("GBSeq_feature-table").find("GBFeature").find("GBFeature_quals").findall("GBQualifier"):
   print(x.find("GBQualifier_name").text)
   print(x.find("GBQualifier_value").text)
-print(response.text)
+#print(response.text)
 ```
 
 
