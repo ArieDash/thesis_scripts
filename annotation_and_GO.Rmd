@@ -4,6 +4,7 @@ output: html_notebook
 params:
   gtm: "..\\annotation\\gene_trans_map.csv"
   de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
+  output: "..\\annotation\\sw_gene_info.csv"
 ---
 
 ```{r}
@@ -46,6 +47,7 @@ head(gene_vector)
 
 ```{r}
 sw_genes = subset(gtm, gtm$origin == "swissprot")
+sw_genes$gene_name = sapply(strsplit(sw_genes$gene_name, ".", fixed = TRUE), function(x) x[1])
 ```
 
 ```{r}
@@ -58,196 +60,75 @@ library(reticulate)
 #py_install("")
 ```
 
-```{python}
-print(" ".join(r.sw_genes['gene_name']))
-```
 
 ```{python}
+import requests
+import pandas
+import time
 import json
-payload = {'ids': 'A0AID1', 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB-Swiss-Prot'}#'fields': 'id,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway', 'format':'tsv', 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB_AC-ID'}
-response = requests.post('https://rest.uniprot.org/idmapping/run', data=payload)
-print(json.loads(response.text))
 
-response = requests.get('https://rest.uniprot.org/idmapping/stream/'+json.loads(response.text)["jobId"])
+ids = ",".join(r.sw_genes['gene_name'])
+
+response = requests.post('https://rest.uniprot.org/idmapping/run', data = {'ids': ids, 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB'})
+
 print(response.text)
 ```
 
 ```{python}
-payload = {'query': 'A0AID1', 'fields': 'gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}#, 'from': 'ACC+ID', 'to': 'ACC'}
-response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
-print(response.text)
+status = requests.get('https://rest.uniprot.org/idmapping/status/'+json.loads(response.text)["jobId"])
+status = json.loads(status.text)
+
+#need to continue polling server every second until job is complete
+while True:
+  #check if a status was returned (when the result is ready, it will just give that, and there will be no jobStatus field)
+  if('jobStatus' in  status.keys()):
+    if(status['jobStatus'] != 'RUNNING'):
+      #If it returned anything other than RUNNING, break out of the loop
+      break
+    else:
+      #job is still running
+      time.sleep(1)
+      status = requests.get('https://rest.uniprot.org/idmapping/status/'+json.loads(response.text)["jobId"])
+      status = json.loads(status.text)
+  else:
+    #jobStatus was not in the keys, so break out of the loop. The result was returned
+    break
 ```
 
 ```{python}
-from SPARQLWrapper import SPARQLWrapper, JSON
-def getProtNames(accession):
-  #print(accession)  
-  mystring = '(uniprot:' + ') (uniprot:'.join(accession) + ')'
-  #print(mystring)
-  sparql = SPARQLWrapper("http://sparql.uniprot.org/sparql")
-  
-  sparql.setQuery("""
-    PREFIX uniprot: <http://purl.uniprot.org/uniprot/>
-    PREFIX up: <http://purl.uniprot.org/core/>
-
-    SELECT ?name ?tissue_name
-    WHERE
-    {
-      VALUES (?ac) {"""+mystring+"""}
-      ?ac up:mnemonic ?name .
-      ?ac up:isolatedFrom ?tissue .
-  		?tissue rdfs:label ?tissue_name
-    }
-  """) 
-  sparql.setReturnFormat(JSON)
-  results = sparql.query().convert()
-  return results
-
-```
-
-```{python}
-def getProtGO(accession):
-  mystring = '(\"' + '\") (\"'.join(accession) + '\")'
-  #print(mystring)
-  
-  sparql = SPARQLWrapper("http://sparql.uniprot.org/sparql")
-  sparql.setQuery("""
-  PREFIX up: <http://purl.uniprot.org/core/>
-  
-  
-  SELECT 
-    (CONCAT(SUBSTR(STR(?protein), 33)) AS ?uniprot)
-    (GROUP_CONCAT(?celtype; separator=";") AS ?celtypes)
-    (GROUP_CONCAT(?biotype; separator=";") AS ?biotypes)
-    (GROUP_CONCAT(?moltype; separator=";") AS ?moltypes)
-	
-  WHERE
-  {
-    VALUES (?ac) {"""+mystring+"""}
-    BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?ac)) AS ?protein)
-    ?protein a up:Protein .
-    ?protein up:classifiedWith ?goTerm .
-    #Determine if the type is biological_process
-    OPTIONAL {
-        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0008150>.
-        ?goTerm rdfs:label ?biotype .
-    }
-    #Determine if the type is cellular_component
-    OPTIONAL {
-        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0005575>.
-        ?goTerm rdfs:label ?celtype .
-    }
-    #Determine if the type is molecular_function
-    OPTIONAL {
-        ?goTerm rdfs:subClassOf <http://purl.obolibrary.org/obo/GO_0003674> .
-        ?goTerm rdfs:label ?moltype .
-    }
-    #Filter out the uniprot keywords
-    FILTER(bound(?biotype) || bound(?celtype) || bound(?moltype))
-  
-
-  } GROUP BY ?protein
-  """)
-  sparql.setReturnFormat(JSON)
-  results = sparql.query().convert()
-  return results
+def clean(result):
+  result = result.split("\t")
+  #clean up output to remove unnecessary headers
+  if(len(result) > 10):
+    if(result[3] != ""):
+      result[3] = result[3].split(":")[1]
+    if(result[10] != ""):
+      result[10] = result[10].split(":")[1]
+  return result
 ```
 
 
 ```{python}
-accession = ["Q5ZLG1","Q5I598","Q28983"]
-res = getProtNames(accession)
-for r in res["results"]["bindings"]:
-  print(r["name"]["value"])
-```
+#payload = {'fields': 'gene_primary,protein_name,cc_function,protein_familes,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_subcellular_location,cc_pathway,organism_name', 'format':'tsv'}
+payload = {'fields': 'gene_primary,protein_name,cc_function,protein_families,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_subcellular_location,cc_pathway,organism_name', 'format':'tsv'}
+info = requests.get('https://rest.uniprot.org/idmapping/uniprotkb/results/stream/'+json.loads(response.text)["jobId"], params=payload)
 
-```{python}
-res = getProtGO(accession)
-for r in res["results"]["bindings"]:
-  print(r["uniprot"]["value"])
-  print(r["moltypes"]["value"])
-  print(r["biotypes"]["value"])
-  print(r["celtypes"]["value"])
-```
+results = info.text.split(sep = "\n")
 
-```{python}
-import xmltodict
-import pprint
-import pandas
-
-
-genes = pandas.read_csv("C:\\Users\\Arie\\Desktop\\sw_genes.csv")
-print(genes)
-
-ids = " ".join(r.sw_genes['gene_name']).split(" ")
-for id in ids:
-  id = id.split('.')[0]
-print(ids)
-
-with open("C:\\Users\\Arie\\Desktop\\test.xml", 'r', encoding='utf-8') as file:
-  xml = file.read()
-
-dict = xmltodict.parse(xml)
-
-for entry in dict["uniprot"]["entry"]:
-  if(entry["accession"] in ids)
-  print(entry["accession"])
-
-print(dict["uniprot"]["entry"]["accession"])
-print(dict["uniprot"]["entry"]["gene"]["name"]["#text"])
-print(dict["uniprot"]["entry"]["organism"]["name"]["@type" == 'scientific']["#text"])
-print(dict["uniprot"]["entry"]["organism"]["name"][1]["#text"])
-print(dict["uniprot"]["entry"]["protein"]["recommendedName"]["fullName"])
-print(dict["uniprot"]["entry"]["comment"][])
-
-pprint.pprint(dict, indent=2)
-```
-
-
-```{python}
-import requests
-import pandas
-import csv
-
-ids = " ".join(r.sw_genes['gene_name']).split(" ")
-
-rows = []
-
-for id in ids:
-  payload = {'query': id.split('.')[0], 'fields': 'accession,gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}
-  response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
-  result = response.text.replace('\n', '\t').split('\t')[10:-1]
-#  result = result[10:-1]
-  rows.append(result)
-
-sw_gene_info = pandas.DataFrame(rows, columns = ['id', 'Gene Names (primary)', 'Protein names', 'Gene Ontology (molecular function)', 'Gene Ontology (biological process)', 'Gene Ontology (cellular component)', 'Keywords', 'Tissue specificity', 'Pathway', 'Organism'])
-```
-
-
-
-```{python}
-import requests
-import pandas
-
-#payload = {'query': " ".join(r.sw_genes['gene_name']), 'columns': 'go(molecular function),go(biological process),go(cellular component),keywords,comment(TISSUE SPECIFICITY),comment(PATHWAY),organism', 'format':'tab', 'from': 'ACC+ID', 'to': 'ACC'}
-payload = {'query': " ".join(r.sw_genes['gene_name']), 'fields': 'gene_primary,protein_name,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_pathway,organism_name', 'format':'tsv'}
-response = requests.get('https://rest.uniprot.org/uniprotkb/search', params=payload)
-print(response.text)
-results = response.text.split(sep = "\n")
-rows = []
-for result in results:
-  rows.append(result.split("\t"))
+#[1:-1] is to get rid of metadata at top and blank line at end
+rows = [clean(result) for result in results[1:-1]]
 
 #get rid of metadata at top and blank line at end
-rows = rows[1:-1]
+#rows = rows[1:-1]
 
-sw_gene_info = pandas.DataFrame(rows, columns = ['go(molecular_function)', 'go(biological_process)', 'go(cellular_component)', 'keywords', 'tissue_specificity', 'pathway', 'organism', 'gene_name'])
+sw_gene_info = pandas.DataFrame(rows, columns = ['accession_id','gene_name', 'protein_name', 'function_description', 'protein_families', 'go(molecular_function)', 'go(biological_process)', 'go(cellular_component)', 'keywords', 'tissue_specificity', 'subcellular_location', 'pathway', 'organism'])
 
-
+print(sw_gene_info)
 ```
 
+
 ```{r}
-write.csv(py$sw_gene_info, "..\\annotation\\sw_gene_info.csv")
+write.csv(py$sw_gene_info, params$output)
 ```
 
 
