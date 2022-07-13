@@ -49,7 +49,6 @@ merged
 ```
 
 
-
 ```{r}
 #we just want one column that has the gene names,start with one preferring the swissprot names
 #If the transcript has a swissprot annotation, keep that one. Otherwise, use the NR annotation. Have a column that indicates which reference the annotation is from

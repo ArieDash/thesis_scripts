@@ -13,7 +13,7 @@ library(rbioapi)
 
 
 ```{r}
-#read in annotation, remove some uneeded columns and then get rid of duplicates
+#read in annotation, remove some unneeded columns and then get rid of duplicates
 gtm = unique(read.csv(params$gtm)[-c(1,2)])
 ```
 
@@ -109,7 +109,6 @@ def clean(result):
 
 
 ```{python}
-#payload = {'fields': 'gene_primary,protein_name,cc_function,protein_familes,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_subcellular_location,cc_pathway,organism_name', 'format':'tsv'}
 payload = {'fields': 'gene_primary,protein_name,cc_function,protein_families,go_f,go_p,go_c,keyword,cc_tissue_specificity,cc_subcellular_location,cc_pathway,organism_name', 'format':'tsv'}
 info = requests.get('https://rest.uniprot.org/idmapping/uniprotkb/results/stream/'+json.loads(response.text)["jobId"], params=payload)
 
