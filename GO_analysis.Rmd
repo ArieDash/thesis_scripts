@@ -1,0 +1,121 @@
+---
+title: "GO analysis"
+output: 
+  pdf_document: default
+params:
+  gtm: "..\\annotation\\gene_trans_map.csv"
+  de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
+  counts: "..\\data_analysis\\CG_red_txi.csv"
+  info: "..\\annotation\\sw_gene_info.csv"
+---
+
+```{r}
+library(goseq)
+```
+
+
+```{r}
+#read in annotation, remove some unneeded columns and then get rid of duplicates
+gtm = unique(read.csv(params$gtm)[-c(1,2)])
+#select only swissprot entries
+gtm = subset(gtm, gtm$origin == "swissprot")
+```
+
+```{r}
+#read in deg list
+degs = read.csv(params$de)
+names(degs)[names(degs) == "X"] = "gene_name"
+#join gtm with degs to get swissprot degs
+degs = merge(degs, gtm)
+```
+
+
+```{r}
+
+assayed_genes = gtm$gene_name
+de_genes = degs$gene_name
+
+gene_vector = as.integer(assayed_genes %in% de_genes)
+names(gene_vector) = assayed_genes
+head(gene_vector)
+```
+
+
+```{r}
+#read in count and length data
+counts = read.csv(params$counts)
+counts$X = sapply(strsplit(counts$X, ".", fixed = TRUE), function(x) x[1])
+#set rownames to gene names
+rownames(counts) = counts$X
+#remove gene names column
+counts = counts[,-1]
+#We only want the length data, which is the second half of the dataframe
+counts = counts[,(length(colnames(counts))/2+1):length(colnames(counts))]
+#get vector of named averge length for each gene
+ave_len = apply(counts, 1, mean)
+
+#need to keep only swissprot genes
+#We do this step now because it is much more efficient once we have relatively small vectors than trying to merge two large dataframes at the start of this chunk
+ave_len = ave_len[names(ave_len) %in% gtm$gene_name]
+```
+
+```{r}
+library(reticulate)
+```
+
+```{python}
+def extract_go(go_strs):
+  temp = [go_str.split("[")[1:] for go_str in go_strs]
+  return [[go_str.split("]")[0] for go_str in group] for group in temp]
+```
+
+
+
+```{r}
+#read in annotation info
+gene_info = read.csv(params$info)
+#only keep id and GO columns
+gene_info = gene_info[,c("accession_id", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
+
+#process GO columns to only keep GO identifiers. We do this in python because it is much more efficient and significantly easier there because we can use complex list comprehensions
+gene_info$go.molecular_function. = py$extract_go(gene_info$go.molecular_function.)
+gene_info$go.biological_process. = py$extract_go(gene_info$go.biological_process.)
+gene_info$go.cellular_component. = py$extract_go(gene_info$go.cellular_component.)
+
+#create named list in correct format for goseq by combining all go terms for each gene into a single vector
+gene2cat = apply(gene_info[,-1], 1, function(x) unlist(x, use.names = FALSE))
+names(gene2cat) = gene_info$accession_id
+
+```
+
+
+#Need to try this with more stringent cutoffs to see if I can get plot to look more normal. Short DEGs are accounting for a lot of the DE proportion
+
+```{r}
+pwf = nullp(DEgenes = gene_vector, bias.data = ave_len, plot.fit = TRUE)
+```
+
+```{r}
+go = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = c("GO:CC", "GO:BP", "GO:MF"), method = "Wallenius")
+go$over_represented_pvalue = p.adjust(go$over_represented_pvalue, method = "fdr")
+go$under_represented_pvalue = p.adjust(go$under_represented_pvalue, method = "fdr")
+go = subset(go, go$over_represented_pvalue <= 0.05 | go$under_represented_pvalue <= 0.05)
+go
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -64,6 +64,9 @@ pref_sp$gene_name[na] = merged$nr_gene_name[na]
 #set origin of nr gene names to nr
 pref_sp$origin[na] = "nr"
 
+#remove the "." and version number on each gene identifier for use with downstream tools
+pref_sp$gene_name = sapply(strsplit(pref_sp$gene_name, ".", fixed = TRUE), function(x) x[1])
+
 pref_sp
 ```
 
