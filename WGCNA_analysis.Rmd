@@ -13,15 +13,18 @@ options(stringsAsFactors = FALSE)
 
 
 ```{r}
-data = read.csv("..\\WGCNA_tutorial\\FemaleLiver-Data\\LiverFemale3600.csv")
+data = read.csv("..\\data_transfer\\RSEM.genes.counts.matrix", sep = '\t')
 dim(data)
+colnames(data) = c("Gene", "1E", "1H", "3E", "3H", "7E", "7H")
 names(data)
+data
 ```
 
 ```{r}
-dat0 = as.data.frame(t(data[, -c(1:8)]))
-names(dat0) = data$substanceBXH
-rownames(dat0) = names(data)[-c(1:8)]
+#At the end of this step, we want genes as columns and rows as samples. Rows should only contain expression data, sample names should be rownames
+dat0 = as.data.frame(t(data[, -1]))
+names(dat0) = data$Gene
+rownames(dat0) = names(data)[-1]
 dat0
 ```
 
@@ -48,12 +51,14 @@ plot(sampleTree, main = "Sample clustering to detect outliers", sub = "", xlab =
 ```
 
 ```{r}
+#skip
 clust = cutreeStatic(sampleTree, cutHeight = 15, minSize = 10)
 table(clust)
 
 ```
 
 ```{r}
+#skip
 #clust 1 contains the samples we want to keep
 keepSamples = (clust == 1)
 datExpr = dat0[keepSamples, ]
@@ -63,18 +68,28 @@ datExpr
 ```
 
 ```{r}
-traits = read.csv("..\\WGCNA_tutorial\\FemaleLiver-Data\\ClinicalTraits.csv")
+#in this case, there were no outliers so we simply set dat0 equal to datExpr.
+datExpr = dat0
+nGenes = ncol(datExpr)
+nSamples = nrow(datExpr)
+```
+
+
+```{r}
+traits = read.csv("..\\data_transfer\\GLPSPhysData2022.csv")
 dim(traits)
 names(traits)
 
 #get rid of unneeded columns
-allTraits = traits[, -c(31,16)]
-allTraits = allTraits[, c(2, 11:36)]
+#allTraits = traits[, -c(31,16)]
+#allTraits = allTraits[, c(2, 11:36)]
+allTraits = traits
 dim(allTraits)
 names(allTraits)
 
 fs = rownames(datExpr)
-traitRows = match(fs, allTraits$Mice)
+#make sure keys match between tables (same sample IDs used in Phys and gene expression tables)
+traitRows = match(fs, allTraits$Sample.ID)
 datTraits = allTraits[traitRows, -1]
 rownames(datTraits) = allTraits[traitRows, 1]
 
@@ -119,7 +134,8 @@ text(sft$fitIndices[,1], sft$fitIndices[,5], labels = powers, cex = cex1, col = 
 
 ```{r}
 #construct gene networks and identify modules
-net = blockwiseModules(datExpr, power = 6, TOMType = "unsigned", minModuleSize = 30, reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE, pamRespectsDendro = FALSE, verbose = 3)
+#pick power = 14 because it seems to even off there
+net = blockwiseModules(datExpr, power = 14, TOMType = "unsigned", minModuleSize = 30, reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE, pamRespectsDendro = FALSE, verbose = 3)
 ```
 
 ```{r}
@@ -152,7 +168,8 @@ moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 
 ```{r}
 #graphical representation
-textMatrix = paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")", sep = "")
+#display correlation and p value if <= 0.05, - if not
+textMatrix = paste(ifelse(moduleTraitPvalue <= 0.05, paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")",  sep = ""), "-"))
 dim(textMatrix) = dim(moduleTraitCor)
 par(mar = c(6, 8.5, 3, 3))
 
@@ -161,8 +178,8 @@ labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = na
 ```
 
 ```{r}
-weight = as.data.frame(datTraits$weight_g)
-names(weight) = "weight"
+weight = datTraits
+#names(weight) = "weight"
 #names (colors) of the modules
 modNames = substring(names(MEs), 3)
 
@@ -182,14 +199,16 @@ names(GSPvalue) = paste("p.GS", names(weight), sep = "")
 
 ```{r}
 #Intramodular analysis: identifying genes with high GS and MM
-#looking at brown module
-module = "brown"
+
+module = "cyan"
+trait = 1
+traitName = unlist(strsplit(names(geneTraitSignificance[trait]), ".", fixed = TRUE))[trait]
 column = match(module, modNames)
 moduleGenes = moduleColors == module
 
 sizeGrWindow(7,7)
 par(mfrow = c(1,1))
-verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]), abs(geneTraitSignificance[moduleGenes, 1]), xlab = paste("Module Membership in", module, "module"), ylab = "Gene significance for body weight", main = paste("Module membership vs gene significance\n"), cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
+verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]), abs(geneTraitSignificance[moduleGenes, trait]), xlab = paste("Module Membership in", module, "module"), ylab = paste0("Gene significance for ", traitName), main = paste("Module membership vs gene significance\n"), cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
 
 ```
 
