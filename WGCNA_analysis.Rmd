@@ -211,23 +211,34 @@ par(mfrow = c(1,1))
 verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]), abs(geneTraitSignificance[moduleGenes, trait]), xlab = paste("Module Membership in", module, "module"), ylab = paste0("Gene significance for ", traitName), main = paste("Module membership vs gene significance\n"), cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
 
 ```
+```{r}
+gtm = read.csv("..\\data_transfer\\pdam_gene_trans_map.csv")
+gtm $gene_name = sapply(strsplit(gtm$gene_name, ".", fixed = TRUE), function (x) x[1])
+sw = read.csv ("..\\data_transfer\\pdam_sw_gene_info.csv")
+gtm = gtm[, -1]
+names(gtm)[names(gtm) == "gene_name"] = "accession_id"
+sw = sw [, -1]
+annot = merge(gtm, sw)
+annot$transcript_name = sapply(strsplit(annot$transcript_name, "-", fixed = TRUE), function (x) x[1])
+annot 
+
+```
 
 ```{r}
 #summary output of network analysis results
-annot = read.csv("..\\WGCNA_tutorial\\FemaleLiver-Data\\GeneAnnotation.csv")
 dim(annot)
 names(annot)
 probes = names(datExpr)
-probes2annot = match(probes, annot$substanceBXH)
+probes2annot = match(probes, annot$transcript_name)
 #number of probes without annotation
 sum(is.na(probes2annot))
 #if all have annotation, should return 0
 ```
 
 ```{r}
-geneInfo = data.frame(substanceBXH = probes, geneSymbol = annot$gene_symbol[probes2annot], LocusLinkID = annot$LocusLinkID[probes2annot], moduleColor = moduleColors, geneTraitSignificance, GSPvalue)
+geneInfo = data.frame(transcript_name = probes, geneSymbol = annot$accession_id[probes2annot], moduleColor = moduleColors, geneTraitSignificance, GSPvalue)
 #order modules by significance for weight
-modOrder = order(-abs(cor(MEs, weight, use = "p")))
+modOrder = order(-abs(cor(MEs, weight[,trait], use = "p")))
 #add module membership info in the chosen order
 for(mod in 1:ncol(geneModuleMembership)){
   oldNames = names(geneInfo)
@@ -236,7 +247,7 @@ for(mod in 1:ncol(geneModuleMembership)){
 }
 
 #order the genes in geneInfo first by module color, then by geneTraitSignificance
-geneOrder = order(geneInfo$moduleColor, -abs(geneInfo$GS.weight))
+geneOrder = order(geneInfo$moduleColor, -abs(geneInfo[,trait+3]))
 geneInfo = geneInfo[geneOrder, ]
 ```
 
@@ -244,11 +255,16 @@ geneInfo = geneInfo[geneOrder, ]
 fix(geneInfo)
 ```
 
+```{r}
+write.csv(geneInfo, "..\\data_transfer\\module_info.csv")
+
+```
+
 
 #Network visualization using WGCNA functions
 ```{r}
 #this chunk may take a while
-dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = 6)
+dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = 14)
 plotTOM = dissTom^7
 diag(plotTOM) = NA
 sizeGrWindow(9,9)
