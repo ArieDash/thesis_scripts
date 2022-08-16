@@ -11,6 +11,7 @@ params:
 
 ```{r}
 library(goseq)
+library(lessR)
 ```
 
 
@@ -97,17 +98,45 @@ pwf = nullp(DEgenes = gene_vector, bias.data = ave_len, plot.fit = TRUE)
 
 ```{r}
 go = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = c("GO:CC", "GO:BP", "GO:MF"), method = "Wallenius")
+go_terms = subset(go, go$numDEInCat > 0)
 go$over_represented_pvalue = p.adjust(go$over_represented_pvalue, method = "fdr")
 go$under_represented_pvalue = p.adjust(go$under_represented_pvalue, method = "fdr")
 go = subset(go, go$over_represented_pvalue <= 0.05 | go$under_represented_pvalue <= 0.05)
 go
+go_terms
 ```
 
+```{r}
+#GO composition DE list
+MF_all_terms = subset(go_terms, go_terms$ontology == "MF", select = c(term, numDEInCat))
+BP_all_terms = subset(go_terms, go_terms$ontology == "BP", select = c(term, numDEInCat))
+CC_all_terms = subset(go_terms, go_terms$ontology == "CC", select = c(term, numDEInCat))
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list")
+```
 
+```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list")
+```
 
+```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list")
+```
 
+```{r}
+#GO composition significantly enriched DE list
+MF_sig_terms = subset(go, go$ontology == "MF", select = c(term, numDEInCat))
+BP_sig_terms = subset(go, go$ontology == "BP", select = c(term, numDEInCat))
+CC_sig_terms = subset(go, go$ontology == "CC", select = c(term, numDEInCat))
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list")
+```
 
+```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_sig_terms, main = "Biological Process GO composition of significantly enriched DE list")
+```
 
+```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_sig_terms, main = "Cellular Component GO composition of significantly enriched DE list")
+```
 
 
 
