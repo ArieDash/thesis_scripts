@@ -12,6 +12,9 @@ params:
 ```{r}
 library(goseq)
 library(lessR)
+library(GO.db)
+library(dplyr)
+library(AnnotationDbi)
 ```
 
 
@@ -108,18 +111,130 @@ go_terms
 
 ```{r}
 #GO composition DE list
-MF_all_terms = subset(go_terms, go_terms$ontology == "MF", select = c(term, numDEInCat))
-BP_all_terms = subset(go_terms, go_terms$ontology == "BP", select = c(term, numDEInCat))
-CC_all_terms = subset(go_terms, go_terms$ontology == "CC", select = c(term, numDEInCat))
+MF_all_terms = subset(go_terms, go_terms$ontology == "MF", select = c(term, numDEInCat, category))
+BP_all_terms = subset(go_terms, go_terms$ontology == "BP", select = c(term, numDEInCat, category))
+CC_all_terms = subset(go_terms, go_terms$ontology == "CC", select = c(term, numDEInCat, category))
+sum(MF_all_terms$numDEInCat)
+```
+```{r}
+splitCount = function(x) { x[1]/length(x)}
+```
+
+
+```{r}
+getParents = function(parents, child_terms){
+  #map GO terms to parent terms
+  parents = as.list(parents)
+  temp = parents[child_terms$category]
+  #get rid of relationship name
+  temp[] = lapply(temp, unname)
+  #convert to dataframe
+  temp = stack(temp)
+  colnames(temp) = c("parent", "child")
+  #combine parent terms with count information (number of DE genes in that category)
+  temp = merge(temp, child_terms, by.x = "child", by.y = "category")
+  #if a child has multiple parents, split the DE count between parents (so for a child with 2 parents and 1 DE gene, each parent should have 0.5 DE gene counts from it). This will keep the column total the same and prevent some categories from becoming inflated
+  num_split = ddply(temp, .(child), numcolwise(splitCount))
+  #replace old numDEIncat column with new one
+  temp = merge(subset(temp, select = -c(numDEInCat)), num_split)
+  #since there are duplicate parents, group by parents and calculate the total number of DE genes for each parent term. This will discard all non-numeric columns other than the parent column (term, child), but we don't need them anymore anyway
+  temp = ddply(temp, .(parent), numcolwise(sum))
+  #get description information for the parent terms
+  temp$definition = AnnotationDbi::select(GO.db, keys = unique(temp$parent), columns = "TERM", keytype = "GOID")$TERM
+  colnames(temp) = c("category", "numDEInCat", "term")
+  return(temp)
+}
+```
+
+```{r}
+numAncestors = function(ancestors, curr){
+  #map GO terms to ancestors
+  ancestors = as.list(ancestors)
+  temp = ancestors[curr$category]
+  #get rid of relationship name
+  temp[] = lapply(temp, unname)
+  num_A = stack(lapply(temp, length))
+  colnames(num_A) = c("num", "category")
+  #decrement num column by 1 to account for "all" term at end
+  num_A$num = num_A$num-1
+  return(num_A)
+}
+```
+
+```{r}
+numParents = function(parents, curr){
+  #map GO terms to parents
+  parents = as.list(parents)
+  temp = parents[curr$category]
+  #get rid of relationship name
+  temp[] = lapply(temp, unname)
+  num_P = stack(lapply(temp, length))
+  colnames(num_P) = c("num", "category")
+  return(num_P)
+}
+```
+
+```{r}
+numAncestors(GOMFANCESTOR, MF_all_terms)
+numParents(GOMFPARENTS, MF_all_terms)
+```
+
+
+#If a GO term is two-level deep but has a large number of parents, it will appear to be deep than it acutally is because they are all listed as ancestors and will be stepped up. Need to subtract the number of parents from the number of ancestors to get "real" depth
+```{r}
+even_GO_Depth = function(lineage, terms_df, depth = 2){
+  if(lineage == "MF"){
+    parents = GOMFPARENTS
+    ancestors = GOMFANCESTOR
+  }
+  else if(lineage == "BP"){
+    parents = GOBPPARENTS
+    ancestors = GOBPANCESTOR
+  }
+  else{
+    parents = GOCCPARENTS
+    ancestors = GOCCANCESTOR
+  }
+  #get the number of ancestors each term has
+  num_A = numAncestors(ancestors, terms_df)
+  #get the number of parents each term has
+  num_P = numParents(parents, terms_df)
+  #adjust number of ancestors to account for multiple parents. If there is more than one parent, subtract that number - 1 from the number of ancestors since the parents are all at the same level and would otherwise make the go term appear deeper in the graph than it truly is. While this solution will not detect this problem until the ancestor GO terms are in the immediate parent level, it is more robust than not having it and things that are split too much are likely to end up grouped in the other category or washed out by stronger signals anyway
+  num_A$num = num_A$num - (num_P$num - 1)
+  #subset df to keep those rows with less than the desired number of ancestors ancestors
+  keep = terms_df[which(num_A$num <= depth),]
+  #subset df into those GO terms that need to be decreased to the desired number of ancestors (higher terms on the graph)
+  step_up = terms_df[which(num_A$num > depth),]
+  while(nrow(step_up) > 0){
+    #Bring GO terms in step_up up one level
+    step_up = getParents(parents, step_up)
+    #combine new rows with the ones left from before
+    temp = rbind(keep, step_up)
+    #group categories together and combine the number of DE genes in them
+    temp = ddply(temp, .(category), numcolwise(sum))
+    #get description information for the terms
+    temp$definition = AnnotationDbi::select(GO.db, keys = unique(temp$category), columns = "TERM", keytype = "GOID")$TERM
+    colnames(temp) = c("category", "numDEInCat", "term")
+    #calculate number of ancestors for new terms
+    num_A = numAncestors(ancestors, temp)
+    keep = temp[which(num_A$num <= depth),]
+    step_up = temp[which(num_A$num > depth),]
+  }
+  #combine categories with <2% of the total number of genes into an "Other" category
+  keep = temp[which(temp$numDEInCat >= 0.02*sum(temp$numDEInCat)),]
+  oth = temp[which(temp$numDEInCat < 0.02*sum(temp$numDEInCat)),]
+  temp = rbind(keep, data.frame(category = "Other", numDEInCat = sum(oth$numDEInCat), term = "Other"))
+  return(temp)
+}
+```
+
+```{r}
 PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list")
 ```
 
 ```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list")
-```
-
-```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list")
+MF_all_even = even_GO_Depth("MF", MF_all_terms, depth = 2)
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_even, main = "Molecular Function GO composition of total DE list at 2-term depth")
 ```
 
 ```{r}
@@ -131,8 +246,27 @@ PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, 
 ```
 
 ```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list")
+```
+
+```{r}
+BP_all_even = even_GO_Depth("BP", BP_all_terms, depth = 2)
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_even, main = "Biological Process GO composition of total DE list at 2-term depth")
+```
+
+```{r}
 PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_sig_terms, main = "Biological Process GO composition of significantly enriched DE list")
 ```
+
+```{r}
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list")
+```
+
+```{r}
+CC_all_even = even_GO_Depth("CC", CC_all_terms, depth = 3)
+PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_even, main = "Cellular Component GO composition of total DE list at 3-term depth")
+```
+
 
 ```{r}
 PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_sig_terms, main = "Cellular Component GO composition of significantly enriched DE list")
