@@ -3,7 +3,325 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  
+  input_counts: "..\\data_analysis\\CG_red_txi.csv"
+  input_samples: "..\\data_analysis\\samples_red.csv"
+  regex: "CG"
+  traits: "..\\data_analysis\\CG_traits.csv"
+  sw: "..\\annotation\\sw_gene_info.csv"
 ---
+
+```{r}
+library(WGCNA)
+options(stringsAsFactors = FALSE)
+```
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples
+```
+
+
+```{r}
+#read in txi data (counts and length offset)
+c_l = read.csv(params$input_counts)
+#set rownames to geneids
+rownames(c_l) = c_l$X
+#remove column containing geneids
+c_l = c_l[,-1]
+#extract counts and lengths tables from dataframe
+data = c_l[,1:length(samples$Name)]
+colnames(data) = samples$Name
+data
+```
+
+```{r}
+#At the end of this step, we want genes as columns and rows as samples. Rows should only contain expression data, sample names should be rownames
+dat0 = as.data.frame(t(data))
+names(dat0) = rownames(data)
+rownames(dat0) = names(data)
+dat0
+```
+
+```{r}
+gsg = goodSamplesGenes(dat0, verbose = 3)
+gsg$allOK
+```
+
+```{r}
+if(!gsg$allOK){
+  if(sum(!gsg$goodGenes) > 0)
+    printFlush(paste("Removing genes:", paste(names(dat0)[!gsg$goodGenes], collapse = ", ")))
+  if(sum(!gsg$goodSamples>0))
+    printFlush(paste("Removing samples:", paste(rownames(dat0)[!gsg$goodSamples], collapse = ", ")))
+  dat0 = dat0[gsg$goodSamples, gsg$goodGenes]
+}
+```
+
+```{r}
+sampleTree = hclust(dist(dat0), method = "average")
+par(cex = 0.6)
+par(mar = c(0,4,2,0))
+plot(sampleTree, main = "Sample clustering to detect outliers", sub = "", xlab = "", cex.lab = 1.5, cex.axis = 1.5, cex.main = 2)
+```
+
+```{r}
+#skip if no outliers
+clust = cutreeStatic(sampleTree, cutHeight = 300000, minSize = 5)
+table(clust)
+
+```
+
+```{r}
+#skip if no outliers
+#clust 1 contains the samples we want to keep
+keepSamples = (clust == 1)
+datExpr = dat0[keepSamples, ]
+nGenes = ncol(datExpr)
+nSamples = nrow(datExpr)
+datExpr
+```
+
+```{r}
+#skip if outliers
+datExpr = dat0
+nGenes = ncol(datExpr)
+nSamples = nrow(datExpr)
+```
+
+
+```{r}
+traits = read.csv(params$traits)
+dim(traits)
+names(traits)
+
+#get rid of unneeded columns
+#allTraits = traits[, -c(31,16)]
+#allTraits = allTraits[, c(2, 11:36)]
+allTraits = traits
+dim(allTraits)
+names(allTraits)
+
+fs = rownames(datExpr)
+#make sure keys match between tables (same sample IDs used in Phys and gene expression tables)
+traitRows = match(fs, allTraits$Name)
+datTraits = allTraits[traitRows, -1]
+rownames(datTraits) = allTraits[traitRows, 1]
+
+collectGarbage()
+datTraits
+```
+
+```{r}
+#visualization of clinical traits relation to sample dendrogram
+
+sampleTree2 = hclust(dist(datExpr), method = "average")
+traitColors = numbers2colors(datTraits, signed = FALSE)
+plotDendroAndColors(sampleTree2, traitColors, groupLabels = names(datTraits), main = "Sample dendrogram and heatmap")
+```
+
+
+#network construction and module detection
+
+```{r}
+#choose set of soft-thresholding powers
+powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
+
+#call the network topology analysis function
+sft = pickSoftThreshold(datExpr, powerVector = powers, verbose = 5)
+
+#sizeGrWindow(9,5)
+par(mfrow = c(1,2))
+cex1 = 0.9
+
+#scale-free topology fit index as a function of the soft-thresholding power
+plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2], xlab = "Soft Threshold (power)", ylab = "Scale Free Topology Model Fit,signed R^2", type = "n", main = paste("Scale independence"))
+
+text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2], labels = powers, cex = cex1, col = "red")
+
+#this line corresponds to using an R^2 cut-off of h
+abline(h=0.90, col= "red")
+
+#mean connectivity as a function of the soft-thresholding power
+plot(sft$fitIndices[,1], sft$fitIndices[,5], xlab = "Soft Threshold (power)", ylab = "Mean connectivity", type = "n", main = paste("Mean connectivity"))
+text(sft$fitIndices[,1], sft$fitIndices[,5], labels = powers, cex = cex1, col = "red")
+```
+
+```{r}
+spower = 10
+```
+
+
+```{r}
+#construct gene networks and identify modules
+#pick power = 10 because it seems to even off there
+net = blockwiseModules(datExpr, power = spower, TOMType = "unsigned", minModuleSize = 30, reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE, pamRespectsDendro = FALSE, verbose = 3)
+```
+
+```{r}
+#how many modules there are and how many genes they contain in descending order. Module 0 is the genes that didn't fit into any of the other modules (the leftover ones)
+table(net$colors)
+```
+
+```{r}
+sizeGrWindow(12,9)
+mergedColors = labels2colors(net$colors)
+plotDendroAndColors(net$dendrograms[[1]], mergedColors[net$blockGenes[[1]]], "Module colors", dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05)
+```
+
+```{r}
+moduleLabels = net$colors
+moduleColors = labels2colors(net$colors)
+MEs = net$MEs
+geneTree = net$dendrograms[[1]]
+```
+
+#Relating modules to external info and identifying important genes
+
+```{r}
+#Recalculate MEs with color labels
+MEs = moduleEigengenes(datExpr, moduleColors)$eigengenes
+MEs = orderMEs(MEs)
+moduleTraitCor = cor(MEs, datTraits, use = "p")
+moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
+```
+
+```{r}
+#graphical representation
+#display correlation and p value if <= 0.05, - if not
+textMatrix = paste(ifelse(moduleTraitPvalue <= 0.05, paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")",  sep = ""), "-"))
+dim(textMatrix) = dim(moduleTraitCor)
+par(mar = c(6, 8.5, 3, 3))
+
+#display correlation values within a heatmap
+labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = names(MEs), ySymbols = names(MEs), colorLabels = FALSE, colors = greenWhiteRed(50), textMatrix = textMatrix, setStdMargins = FALSE, cex.text = 0.5, zlim = c(-1,1), main = paste("Module-trait relationships"))
+```
+
+```{r}
+weight = datTraits
+#names(weight) = "weight"
+#names (colors) of the modules
+modNames = substring(names(MEs), 3)
+
+geneModuleMembership = as.data.frame(cor(datExpr, MEs, use = "p"))
+MMPvalue = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership), nSamples))
+
+names(geneModuleMembership) = paste("MM", modNames, sep = "")
+names(MMPvalue) = paste("p.MM", modNames, sep = "")
+
+geneTraitSignificance = as.data.frame(cor(datExpr, weight, use = "p"))
+GSPvalue = as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSamples))
+
+names(geneTraitSignificance) = paste("GS.", names(weight), sep = "")
+names(GSPvalue) = paste("p.GS", names(weight), sep = "")
+
+```
+
+```{r}
+#Intramodular analysis: identifying genes with high GS and MM
+
+module = "green"
+trait = 1
+traitName = unlist(strsplit(names(geneTraitSignificance[trait]), ".", fixed = TRUE))[trait]
+column = match(module, modNames)
+moduleGenes = moduleColors == module
+
+sizeGrWindow(7,7)
+par(mfrow = c(1,1))
+verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]), abs(geneTraitSignificance[moduleGenes, trait]), xlab = paste("Module Membership in", module, "module"), ylab = paste0("Gene significance for ", traitName), main = paste("Module membership vs gene significance\n"), cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
+
+```
+
+```{r}
+sw = read.csv (params$sw)
+annot = sw [, -1]
+annot
+```
+
+```{r}
+#summary output of network analysis results
+dim(annot)
+names(annot)
+probes = names(datExpr)
+probes2annot = match(probes, annot$accession_id)
+#number of probes without annotation
+sum(is.na(probes2annot))
+#if all have annotation, should return 0
+```
+
+```{r}
+geneInfo = data.frame(transcript_name = probes, geneSymbol = annot$accession_id[probes2annot], moduleColor = moduleColors, geneTraitSignificance, GSPvalue)
+#order modules by significance for weight
+modOrder = order(-abs(cor(MEs, weight[,trait], use = "p")))
+#add module membership info in the chosen order
+for(mod in 1:ncol(geneModuleMembership)){
+  oldNames = names(geneInfo)
+  geneInfo = data.frame(geneInfo, geneModuleMembership[, modOrder[mod]], MMPvalue[, modOrder[mod]])
+  names(geneInfo) = c(oldNames, paste("MM.", modNames[modOrder[mod]], sep = ""), paste("p.MM", modNames[modOrder[mod]], sep = ""))
+}
+
+#order the genes in geneInfo first by module color, then by geneTraitSignificance
+geneOrder = order(geneInfo$moduleColor, -abs(geneInfo[,trait+3]))
+geneInfo = geneInfo[geneOrder, ]
+```
+
+```{r}
+fix(geneInfo)
+```
+
+```{r}
+write.csv(geneInfo, "..\\data_transfer\\module_info.csv")
+
+```
+
+
+#Network visualization using WGCNA functions
+```{r}
+#this chunk may take a while
+dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = spower)
+plotTOM = dissTom^7
+diag(plotTOM) = NA
+sizeGrWindow(9,9)
+TOMplot(plotTOM, geneTree, moduleColors, main = "Network heatmap plot, all genes")
+```
+
+```{r}
+#visualizing the network of eigengenes
+
+#recalculate module eigengenes
+MEs = moduleEigengenes(datExpr, moduleColors)$eigengenes
+
+#Isolate wanted physiological traits from the trait dataframe
+weight = as.data.frame(datTraits$weight_g)
+names(weight) = "weight"
+
+#add the weight to existing module eigengenes
+MET = orderMEs(cbind(MEs, weight))
+sizeGrWindow(5, 7.5)
+par(cex = 0.9)
+plotEigengeneNetworks(MET, "", marDendro = c(0,4,1,2), marHeatmap = c(3,4,1,2), cex.lab = 0.8, xLabelsAngle = 90)
+#plot the dendrogram
+sizeGrWindow(6,6)
+par(cex = 1.0)
+plotEigengeneNetworks(MET, "Eigengene dendrogram", marDendro = c(0,4,2,0), plotHeatmaps = FALSE)
+```
+
+
+```{r}
+#plot the heatmap matrix
+par(cex = 1.0)
+plotEigengeneNetworks(MET, "Eigengene adjancency heatmap", marHeatmap = c(3,4,2,2), plotDendrograms = FALSE, xLabelsAngle = 90)
+```
+
+
+
+
+
+
+
+
+
+
 
 

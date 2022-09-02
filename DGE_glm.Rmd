@@ -3,9 +3,9 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: ""
-  regex: ""
-  input_counts: ""
+  input_samples: "..\\data_analysis\\samples_red.csv"
+  regex: "CG"
+  input_counts: "..\\data_analysis\\CG_red_txi.csv"
   install: 0
   p : 0.05
   lfc : 1
@@ -26,6 +26,7 @@ if(params$install == 1){
 ```{r}
 library(edgeR)
 library(pheatmap)
+library(ggvenn)
 ```
 
 
@@ -299,7 +300,7 @@ write_sig_genes(sig_genes_UR, "UvsR")
 #make heatmap of significant genes shared across all treatments
 
 #get list of shared DEGs
-sig_genes = intersect(c(rownames(sig_genes_UC), rownames(sig_genes_RC)), rownames(sig_genes_UR))
+sig_genes = intersect(intersect(rownames(sig_genes_UC), rownames(sig_genes_RC)), rownames(sig_genes_UR))
 
 #only do this if there are shared DE genes
 if(length(sig_genes) > 0){
@@ -309,6 +310,13 @@ if(length(sig_genes) > 0){
   
   make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes, main = "shared DEG heatmap", color = cols, annotation_color = anno_color)
 }
+```
+
+
+
+```{r}
+#Venn diagrams of DEGs
+ggvenn(list("UvsC" = rownames(sig_genes_UC), "RvsC" = rownames(sig_genes_RC), "UvsR" = rownames(sig_genes_UR)), show_percentage = FALSE)
 ```
 
 
