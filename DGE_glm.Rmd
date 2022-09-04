@@ -3,13 +3,14 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CG"
-  input_counts: "..\\data_analysis\\CG_red_txi.csv"
+  input_samples: ""
+  regex: ""
+  input_counts: ""
   install: 0
   p : 0.05
   lfc : 1
-  out : ""
+  deg_out : ""
+  image_out : ""
 ---
 
 
@@ -29,6 +30,18 @@ library(pheatmap)
 library(ggvenn)
 ```
 
+
+```{r}
+#check to make sure output directories exist, create them if not
+deg_dir = unlist(strsplit(params$deg_out, params$regex))[1]
+image_dir = unlist(strsplit(params$image_out, paste0(params$regex, "_[^_]*_$")))
+if(!dir.exists(deg_dir)){
+  dir.create(deg_dir)
+}
+if(!dir.exists(image_dir)){
+  dir.create(image_dir)
+}
+```
 
 
 ```{r}
@@ -97,8 +110,13 @@ y <- y[keep, ]
 #plot samples, look for outliers
 points = c(15,16,17,18,19)
 colors = c("green", "blue", "red", "orange", "purple")
+#save output as image
+png(paste0(params$image_out, "MDS_cluster.png"), width = 700)
+
 plotMDS(y, col = colors[group], pch = points[group], labels = colnames(y))
 legend("topleft", legend = levels(group), col = colors, pch = points)
+
+dev.off()
 ```
 
 ```{r}
@@ -158,7 +176,8 @@ anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorang
 treatments = unique(samples$Treatment)
 #get only elements of list that match current treatments so that legend does not include extraneous colors
 anno_color = list(treatment = anno_color_opts[treatments])
-pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap", color = cols, annotation_colors = anno_color)
+
+pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap", color = cols, annotation_colors = anno_color, filename = paste0(params$image_out, "total_expression_heatmap.png"))
 ```
 
 
@@ -188,7 +207,7 @@ volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="V
 
 
 ```{r}
-make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_color){
+make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_color, filename){
   
   #subset matrix to include only significantly differentially expressed genes for the desired samples
   sig_cpm = cpms[rownames(cpms) %in% sig_genes, colnames(cpms) %in% samples_comp$Name]
@@ -197,7 +216,7 @@ make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_c
   rownames(col_anno) = samples_comp$Name
   #make heatmap
   if(length(sig_cpm) > 0){
-    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = anno_color)
+    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = anno_color, filename = filename)
   }
   
 }
@@ -210,13 +229,32 @@ run_test = function(fit, contrast){
   lrt = glmLRT(fit, contrast = contrasts[,contrast])
   print(topTags(lrt))
   print(summary(decideTests(lrt)))
+  
+  #save image as output
+  png(paste0(params$image_out, "_", contrast, "_MDplot.png"))
+  
   plotMD(lrt)
   abline(h = c(-1,1), col = "blue")
+  
+  dev.off()
+  
   tt = topTags(lrt, n = NULL)$table
   
+  #save output as image
+  png(paste0(params$image_out, "_", contrast, "_volcano_plot.png"), width = 550)
+
   #volcano plots
   volcano_plot(tt$logFC, tt$FDR)
+
+  dev.off()
+  
+  #save output as image
+  png(paste0(params$image_out, "_", contrast, "_volcano_plot_fdr_cutoff.png"), width = 550)
+
+  #volcano plots
   volcano_plot(tt$logFC, tt$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
+
+  dev.off()
   
   #add column that indicates if gene is significantly differentially expressed or not
   tt$threshold = tt$FDR < params$p & abs(tt$logFC) > params$lfc
@@ -232,11 +270,11 @@ run_test = function(fit, contrast){
 write_sig_genes = function(sig_genes, comparison){
   #save significant DEGs to file
   #Upregulated genes
-  write.csv(subset(sig_genes, logFC > 0), paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_UP.csv"))
+  write.csv(subset(sig_genes, logFC > 0), paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_UP.csv"))
   #Downregulated genes
-  write.csv(subset(sig_genes, logFC < 0), paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_DOWN.csv"))
+  write.csv(subset(sig_genes, logFC < 0), paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_DOWN.csv"))
   #All significant genes
-  write.csv(sig_genes, paste0(params$out, comparison, "_P", params$p, "C", params$lfc, "_DE.csv"))
+  write.csv(sig_genes, paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_DE.csv"))
 }
 ```
 
@@ -260,7 +298,7 @@ anno_color = list(treatment = anno_color_opts[c("U","C")])
 #select only samples that were subjected to compared treatments
 samples_comp = subset(samples, Treatment == "U" | Treatment == "C")
 
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UC), main = "UvsC significant DEG heatmap", color = cols, annotation_color = anno_color)
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UC), main = "UvsC significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "UvsC_deg_heatmap.png"))
 
 #save significant DEGs to file
 write_sig_genes(sig_genes_UC, "UvsC")
@@ -274,7 +312,7 @@ anno_color = list(treatment = anno_color_opts[c("R","C")])
 
 samples_comp = subset(samples, Treatment == "R" | Treatment == "C")
 
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_RC), main = "RvsC significant DEG heatmap", color = cols, annotation_color = anno_color)
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_RC), main = "RvsC significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "RvsC_deg_heatmap.png"))
 
 #save significant DEGs to file
 write_sig_genes(sig_genes_RC, "RvsC")
@@ -288,7 +326,7 @@ anno_color = list(treatment = anno_color_opts[c("U","R")])
 
 samples_comp = subset(samples, Treatment == "U" | Treatment == "R")
 
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UR), main = "UvsR significant DEG heatmap", color = cols, annotation_color = anno_color)
+make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UR), main = "UvsR significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "UvsR_deg_heatmap.png"))
 
 #save significant DEGs to file
 write_sig_genes(sig_genes_UR, "UvsR")
@@ -307,8 +345,9 @@ if(length(sig_genes) > 0){
   samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
   
   anno_color = list(treatment = anno_color_opts)
-  
-  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes, main = "shared DEG heatmap", color = cols, annotation_color = anno_color)
+
+  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes, main = "shared DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "shared_deg_heatmap.png"))
+
 }
 ```
 
@@ -317,6 +356,9 @@ if(length(sig_genes) > 0){
 ```{r}
 #Venn diagrams of DEGs
 ggvenn(list("UvsC" = rownames(sig_genes_UC), "RvsC" = rownames(sig_genes_RC), "UvsR" = rownames(sig_genes_UR)), show_percentage = FALSE)
+
+#save output as image
+ggsave(paste0(params$image_out, "treatment_venn.png"))
 ```
 
 

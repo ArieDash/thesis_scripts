@@ -84,7 +84,7 @@ for(regex in tissues){
 types = c()
 
 #types = append(types, "all")
-types = append(types, "no_batch")
+#types = append(types, "no_batch")
 #types = append(types, "batch")
 types = append(types, "red")
 
@@ -108,14 +108,17 @@ for(regex in tissues){
     input_counts = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
     
     #Path to output directory for DEG lists
-    out = paste0("..\\data_analysis\\DE_lists\\", regex, "_", type, "_")
+    deg_out = paste0("..\\data_analysis\\DE_lists\\", regex, "_", type, "_")
+    
+    #Path to output directory for images
+    image_out = paste0("..\\data_analysis\\images\\", regex, "_", type, "\\", regex, "_", type, "_")
 
     #path to and name of output report file
     #if it errors, try using just the file name output and moving it where you want afterwards. I was having some         issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it     wrote the .tex file to the location just fine
     report_output = paste0(regex, "_", type, "_LRT.pdf")
 
     #render script in new R session to isolate it
-    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document'))
+    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, deg_out = deg_out, image_out = image_out), output_file = report_output, output_format = 'pdf_document'))
     
 #    rmarkdown::render(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, out = out), output_file = report_output, output_format = 'pdf_document')
   
