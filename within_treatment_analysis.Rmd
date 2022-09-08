@@ -1,0 +1,84 @@
+---
+title: "Within Treatment Plots"
+output: html_notebook
+params:
+  labels: ""
+  input_degs: ""
+  image_out : ""
+---
+
+
+```{r}
+library(pheatmap)
+library(ggvenn)
+```
+
+```{r}
+#check to make sure output directory exists, create it if not
+image_dir = unlist(strsplit(params$image_out, "[^\\]*_$"))
+if(!dir.exists(image_dir)){
+  dir.create(image_dir)
+}
+```
+
+```{r}
+#read in deg lists
+degs = data.frame()
+for(i in 1:length(params$input_degs)){
+  temp = read.csv(params$input_degs[i])
+  #only add to the data df if the csv file we read in had any data in it
+  if(nrow(temp) > 0){
+    temp$tissue = params$labels[i]
+    degs = rbind(degs, temp)
+  }
+}
+names(degs)[1] = "gene"
+```
+
+```{r}
+#make venn diagram
+venn_data = NULL
+for(r in params$labels){
+  venn_data[paste(r)] = subset(degs, degs$tissue == r, select = "gene")
+}
+ggvenn(venn_data, show_percentage = FALSE)
+
+ggsave(paste0(params$image_out, "venn.png"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -354,11 +354,23 @@ if(length(sig_genes) > 0){
 
 
 ```{r}
-#Venn diagrams of DEGs
+#Venn diagrams of all DEGs
 ggvenn(list("UvsC" = rownames(sig_genes_UC), "RvsC" = rownames(sig_genes_RC), "UvsR" = rownames(sig_genes_UR)), show_percentage = FALSE)
 
 #save output as image
-ggsave(paste0(params$image_out, "treatment_venn.png"))
+ggsave(paste0(params$image_out, "treatment_venn_all.png"))
+
+#Venn diagrams of upregulated DEGs
+ggvenn(list("UvsC" = rownames(subset(sig_genes_UC, logFC > 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC > 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC > 0))), show_percentage = FALSE)
+
+#save output as image
+ggsave(paste0(params$image_out, "treatment_venn_up.png"))
+
+#Venn diagrams of downregulated DEGs
+ggvenn(list("UvsC" = rownames(subset(sig_genes_UC, logFC < 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC < 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC < 0))), show_percentage = FALSE)
+
+#save output as image
+ggsave(paste0(params$image_out, "treatment_venn_down.png"))
 ```
 
 
