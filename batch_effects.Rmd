@@ -1,0 +1,95 @@
+---
+title: "Batch Effects"
+output: html_notebook
+params:
+  input : "..\\data_analysis\\CG_batch_txi.csv"
+  regex : "CG"
+  samples : "..\\data_analysis\\samples_batch.csv"
+  out_file : "CG_batch"
+  out_dir : "..\\data_analysis\\"
+  out : "..\\data_analysis\\CG_corrected_txi.csv"
+---
+
+
+```{r}
+devtools::install_github("zhangyuqing/sva-devel")
+```
+
+
+```{r}
+library(BatchQC)
+library(sva)
+```
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples
+```
+
+
+```{r}
+#read in txi data (counts and length offset)
+c_l = read.csv(params$input)
+#set rownames to geneids
+rownames(c_l) = c_l$X
+#remove column containing geneids
+c_l = c_l[,-1]
+#extract counts and lengths tables from dataframe
+cts = c_l[,1:length(samples$Name)]
+colnames(cts) = samples$Name
+cts = as.matrix(cts)
+batch = samples$Batch
+cond = samples$Treatment
+```
+
+```{r}
+batchQC(cts,batch = batch, condition = cond, report_file = paste0(params$out_file, "_raw.html"), report_dir = params$out_dir)
+```
+
+```{r}
+adjusted_counts = sva::ComBat_seq(cts, batch = batch, group = cond)
+```
+
+```{r}
+batchQC(adjusted_counts,batch = batch, condition = cond, report_file = paste0(params$out_file, "_corrected.html"), report_dir = params$out_dir)
+```
+
+
+```{r}
+#get length data
+lengths = c_l[,(length(samples$Name)+1):(2*length(samples$Name))]
+colnames(lengths) = lapply(samples$Name, function(x) paste0(x,"_length"))
+
+#combine length data with adjusted counts
+adjusted_counts = as.data.frame(adjusted_counts)
+colnames(adjusted_counts) = lapply(samples$Name, function(x) paste0(x,"_counts"))
+adjusted_counts = cbind(adjusted_counts, lengths)
+```
+
+```{r}
+write.csv(adjusted_counts, params$out)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
