@@ -231,7 +231,7 @@ run_test = function(fit, contrast){
   print(summary(decideTests(lrt)))
   
   #save image as output
-  png(paste0(params$image_out, "_", contrast, "_MDplot.png"))
+  png(paste0(params$image_out, contrast, "_MDplot.png"))
   
   plotMD(lrt)
   abline(h = c(-1,1), col = "blue")
@@ -241,7 +241,7 @@ run_test = function(fit, contrast){
   tt = topTags(lrt, n = NULL)$table
   
   #save output as image
-  png(paste0(params$image_out, "_", contrast, "_volcano_plot.png"), width = 550)
+  png(paste0(params$image_out, contrast, "_volcano_plot.png"), width = 550)
 
   #volcano plots
   volcano_plot(tt$logFC, tt$FDR)
@@ -249,7 +249,7 @@ run_test = function(fit, contrast){
   dev.off()
   
   #save output as image
-  png(paste0(params$image_out, "_", contrast, "_volcano_plot_fdr_cutoff.png"), width = 550)
+  png(paste0(params$image_out, contrast, "_volcano_plot_fdr_cutoff.png"), width = 550)
 
   #volcano plots
   volcano_plot(tt$logFC, tt$FDR, y = T, main = "Volcano plot, FDR > 10^-10")
