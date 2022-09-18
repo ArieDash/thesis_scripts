@@ -4,7 +4,7 @@ output: html_notebook
 params:
   input : "..\\data_analysis\\CG_batch_txi.csv"
   regex : "CG"
-  samples : "..\\data_analysis\\samples_batch.csv"
+  samples : "..\\data_analysis\\samples_corrected.csv"
   out_file : "CG_batch"
   out_dir : "..\\data_analysis\\"
   out : "..\\data_analysis\\CG_corrected_txi.csv"

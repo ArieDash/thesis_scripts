@@ -1,21 +1,23 @@
 ---
 title: "GO analysis"
-output: 
-  pdf_document: default
+output: html_notebook
 params:
   gtm: "..\\annotation\\gene_trans_map.csv"
-  de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
-  counts: "..\\data_analysis\\CG_red_txi.csv"
+  de: ""
+  counts: ""
   info: "..\\annotation\\sw_gene_info.csv"
+  baseout : ""
+  listout : ""
 ---
 
 ```{r}
 library(goseq)
 library(lessR)
 library(GO.db)
-library(dplyr)
+library(plyr)
 library(AnnotationDbi)
 ```
+
 
 
 ```{r}
@@ -96,7 +98,12 @@ names(gene2cat) = gene_info$accession_id
 #Need to try this with more stringent cutoffs to see if I can get plot to look more normal. Short DEGs are accounting for a lot of the DE proportion
 
 ```{r}
+#save image
+png(filename = paste0(params$baseout, "pwf.png"), width = 650)
+
 pwf = nullp(DEgenes = gene_vector, bias.data = ave_len, plot.fit = TRUE)
+
+dev.off()
 ```
 
 ```{r}
@@ -174,11 +181,6 @@ numParents = function(parents, curr){
 }
 ```
 
-```{r}
-numAncestors(GOMFANCESTOR, MF_all_terms)
-numParents(GOMFPARENTS, MF_all_terms)
-```
-
 
 #If a GO term is two-level deep but has a large number of parents, it will appear to be deep than it acutally is because they are all listed as ancestors and will be stepped up. Need to subtract the number of parents from the number of ancestors to get "real" depth
 ```{r}
@@ -228,48 +230,75 @@ even_GO_Depth = function(lineage, terms_df, depth = 2){
 }
 ```
 
-```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list")
-```
 
 ```{r}
-MF_all_even = even_GO_Depth("MF", MF_all_terms, depth = 2)
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_even, main = "Molecular Function GO composition of total DE list at 2-term depth")
+#only run this if there are GO terms in the dataframe
+if(nrow(MF_all_terms) > 0){
+  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list", pdf_file = paste0(params$baseout, "all_MF.pdf"), width = 12.5)
+  
+  MF_all_even = even_GO_Depth("MF", MF_all_terms, depth = 2)
+  if(nrow(MF_all_even) > 0){
+    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_even, main = "Molecular Function GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_MF.pdf"), width = 12.5)
+  }
+}
 ```
+
 
 ```{r}
 #GO composition significantly enriched DE list
-MF_sig_terms = subset(go, go$ontology == "MF", select = c(term, numDEInCat))
-BP_sig_terms = subset(go, go$ontology == "BP", select = c(term, numDEInCat))
-CC_sig_terms = subset(go, go$ontology == "CC", select = c(term, numDEInCat))
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list")
-```
+MF_sig_terms = subset(go, go$ontology == "MF")
+BP_sig_terms = subset(go, go$ontology == "BP")
+CC_sig_terms = subset(go, go$ontology == "CC")
 
-```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list")
-```
-
-```{r}
-BP_all_even = even_GO_Depth("BP", BP_all_terms, depth = 2)
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_even, main = "Biological Process GO composition of total DE list at 2-term depth")
-```
-
-```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_sig_terms, main = "Biological Process GO composition of significantly enriched DE list")
-```
-
-```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list")
-```
-
-```{r}
-CC_all_even = even_GO_Depth("CC", CC_all_terms, depth = 3)
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_even, main = "Cellular Component GO composition of total DE list at 3-term depth")
+#save sig lists
+write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
+write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
+write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 ```
 
 
 ```{r}
-PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_sig_terms, main = "Cellular Component GO composition of significantly enriched DE list")
+if(nrow(MF_sig_terms) > 0){
+ PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
+}
+```
+
+```{r}
+if(nrow(BP_all_terms) > 0){
+  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list", pdf_file = paste0(params$baseout, "all_BP.pdf"), width = 12.5)
+  
+  BP_all_even = even_GO_Depth("BP", BP_all_terms, depth = 2)
+
+  if(nrow(BP_all_even) > 0){
+    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_even, main = "Biological Process GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_BP.pdf"), width = 12.5)
+  }
+}
+```
+
+
+```{r}
+if(nrow(BP_sig_terms) > 0){
+  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_sig_terms, main = "Biological Process GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_BP.pdf"), width = 12.5)
+}
+```
+
+```{r}
+if(nrow(CC_all_terms) > 0){
+  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list", pdf_file = paste0(params$baseout, "all_CC.pdf"), width = 12.5)
+  
+  CC_all_even = even_GO_Depth("CC", CC_all_terms, depth = 3)
+
+  if(nrow(CC_all_even) > 0){
+    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_even, main = "Cellular Component GO composition of total DE list at 3-term depth", pdf_file = paste0(params$baseout, "all_even_CC.pdf"), width = 12.5)
+  }
+}
+```
+
+
+```{r}
+if(nrow(CC_sig_terms) > 0){
+  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_sig_terms, main = "Cellular Component GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_CC.pdf"), width = 12.5)
+}
 ```
 
 
