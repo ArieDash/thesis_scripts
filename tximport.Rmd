@@ -55,7 +55,7 @@ all(file.exists(files))
 ```
 
 ```{r}
-txi = tximport(files, type = "salmon", tx2gene = gene_trans_map, ignoreTxVersion = TRUE)# countsFromAbundance = "lengthScaledTPM", ignoreTxVersion = TRUE)
+txi = tximport(files, type = "salmon", tx2gene = gene_trans_map, ignoreTxVersion = TRUE)#, countsFromAbundance = "lengthScaledTPM")
 ```
 
 
