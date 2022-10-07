@@ -3,10 +3,10 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  input_counts: "..\\data_analysis\\CG_red_txi.csv"
+  input_counts: "..\\data_analysis\\CB_red_filtered_counts.csv"
   input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CG"
-  traits: "..\\data_analysis\\CG_traits.csv"
+  regex: "CB"
+  traits: "..\\data_analysis\\CB_traits.csv"
   sw: "..\\annotation\\sw_gene_info.csv"
 ---
 
@@ -22,8 +22,19 @@ samples = samples[grep(params$regex, samples$Name), ]
 samples
 ```
 
+```{r}
+data = read.csv(params$input_counts)
+#set rownames to geneids
+rownames(data) = data$X
+#remove column containing geneids
+data =  data[,-1]
+data
+```
+
 
 ```{r}
+#don't use
+
 #read in txi data (counts and length offset)
 c_l = read.csv(params$input_counts)
 #set rownames to geneids
@@ -68,7 +79,12 @@ plot(sampleTree, main = "Sample clustering to detect outliers", sub = "", xlab =
 
 ```{r}
 #skip if no outliers
-clust = cutreeStatic(sampleTree, cutHeight = 300000, minSize = 5)
+if(params$regex == "CG"){
+  
+}else if(params$regex == "CB"){
+  clust = cutreeStatic(sampleTree, cutHeight = 30000, minSize = 5)
+}
+
 table(clust)
 
 ```
@@ -149,7 +165,12 @@ text(sft$fitIndices[,1], sft$fitIndices[,5], labels = powers, cex = cex1, col = 
 ```
 
 ```{r}
-spower = 10
+if(params$regex == "CG"){
+  spower = 18
+}else if(params$regex == "CB"){
+  spower = 9
+}
+
 ```
 
 
@@ -198,6 +219,8 @@ par(mar = c(6, 8.5, 3, 3))
 labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = names(MEs), ySymbols = names(MEs), colorLabels = FALSE, colors = greenWhiteRed(50), textMatrix = textMatrix, setStdMargins = FALSE, cex.text = 0.5, zlim = c(-1,1), main = paste("Module-trait relationships"))
 ```
 
+
+
 ```{r}
 weight = datTraits
 #names(weight) = "weight"
@@ -221,8 +244,8 @@ names(GSPvalue) = paste("p.GS", names(weight), sep = "")
 ```{r}
 #Intramodular analysis: identifying genes with high GS and MM
 
-module = "green"
-trait = 1
+module = "darkgreen"
+trait = 3
 traitName = unlist(strsplit(names(geneTraitSignificance[trait]), ".", fixed = TRUE))[trait]
 column = match(module, modNames)
 moduleGenes = moduleColors == module
@@ -267,12 +290,22 @@ geneInfo = geneInfo[geneOrder, ]
 ```
 
 ```{r}
+#select the vector index of significant cells in the Pvalue matrix, then mod by the number of modules (rows) to convert to row index. Then remove duplicates in case a module was significantly associated with more than one trait
+sigRows = unique(which(moduleTraitPvalue < 0.05)%%length(table(net$colors)))
+
+#select only those modules that were signicantly correlated with at least one trait
+sigGeneInfo = subset(geneInfo, paste0("ME", geneInfo$moduleColor) %in% rownames(moduleTraitPvalue[sigRows,]))
+
+```
+
+
+```{r}
 fix(geneInfo)
 ```
 
 ```{r}
-write.csv(geneInfo, "..\\data_transfer\\module_info.csv")
-
+write.csv(geneInfo, paste0("..\\data_transfer\\", params$regex, "_module_info.csv"))
+write.csv(sigGeneInfo, paste0("..\\data_transfer\\", params$regex, "_sig_module_info.csv"))
 ```
 
 
