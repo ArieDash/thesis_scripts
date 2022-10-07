@@ -3,14 +3,15 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: ""
-  regex: ""
-  input_counts: ""
+  input_samples: "..\\data_analysis\\samples_red.csv"
+  regex: "CG"
+  input_counts: "..\\data_analysis\\CG_red_txi.csv"
   install: 0
   p : 0.05
   lfc : 1
+  counts_out : ""
   deg_out : ""
-  image_out : ""
+  image_out : "..\\data_analysis\\images\\CG_red\\CG_red_"
 ---
 
 
@@ -102,6 +103,12 @@ keep = filterByExpr(y)
 y <- y[keep, ]
 ```
 
+```{r}
+#write out filtered and normalized counts (done above) to file for use in WGCNA
+#See https://github.com/loganlabcsumb/SCLERA_Tutuila_Thermotolerance/blob/main/RNAseq/WGCNA/WGCNA.Rmd for details
+
+write.csv(cpm(y, normalized.lib.size = TRUE), params$counts_out)
+```
 
 
 
@@ -162,7 +169,7 @@ plotBCV(y)
 
 ```{r}
 #make heatmap of all samples
-cpms = cpm(y, offset = y$offset, log = F)
+cpms = cpm(y, offset = y$offset, log = T)
 cols = colorRampPalette(c("green", "black", "red"))(300)
 
 #make dataframe to indicate which samples were in which treatment for heatmap
@@ -177,7 +184,8 @@ treatments = unique(samples$Treatment)
 #get only elements of list that match current treatments so that legend does not include extraneous colors
 anno_color = list(treatment = anno_color_opts[treatments])
 
-pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap", color = cols, annotation_colors = anno_color, filename = paste0(params$image_out, "total_expression_heatmap.png"))
+#note that this function will not overwrite existing files to save its output. Clear out old files or write code to detect and delete them if you plan on running repeatedly
+pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap (log2 cpm)", color = cols, annotation_colors = anno_color, filename = paste0(params$image_out, "total_expression_heatmap.png"))
 ```
 
 
