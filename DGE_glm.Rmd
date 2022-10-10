@@ -3,15 +3,15 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: "..\\data_analysis\\samples_red.csv"
+  input_samples: ""
   regex: "CG"
-  input_counts: "..\\data_analysis\\CG_red_txi.csv"
+  input_counts: ""
   install: 0
   p : 0.05
   lfc : 1
   counts_out : ""
   deg_out : ""
-  image_out : "..\\data_analysis\\images\\CG_red\\CG_red_"
+  image_out : ""
 ---
 
 
