@@ -21,6 +21,21 @@ library(AnnotationDbi)
 
 
 ```{r}
+#check to make sure output directories exist, create them if not
+
+#match \\ (escaped), then match anything other than a \ (escaped) until the end of the string
+list_dir = unlist(strsplit(params$listout, "\\\\[^\\]*$"))
+image_dir = unlist(strsplit(params$baseout, "\\\\[^\\]*$"))
+
+if(!dir.exists(list_dir)){
+  dir.create(list_dir)
+}
+if(!dir.exists(image_dir)){
+  dir.create(image_dir)
+}
+```
+
+```{r}
 #read in annotation, remove some unneeded columns and then get rid of duplicates
 gtm = unique(read.csv(params$gtm)[-c(1,2)])
 #select only swissprot entries

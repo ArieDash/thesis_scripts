@@ -266,6 +266,54 @@ for(type in types){
 
 ```
 
+```{r}
+#WGCNA GO analysis chunk
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues = c()
+
+#tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+#tissues = append(tissues, "CM")
+#tissues = append(tissues, "CL")
+
+
+for(type in types){
+  for(tissue in tissues){
+    sig_modules = list.files("..\\data_analysis\\WGCNA_output\\", pattern = paste0(tissue, "_sig"), full.names = TRUE)
+    for(sig_module in sig_modules){
+       de = sig_module 
+
+       counts = paste0("..\\data_analysis\\", tissue, "_", type, "_txi.csv")
+       
+       baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
+       
+       listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
+       
+       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout)))
+    }
+  }
+}
+```
+
 
 ```{r}
 
