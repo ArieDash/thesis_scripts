@@ -31,7 +31,7 @@ if(!dir.exists(list_dir)){
   dir.create(list_dir)
 }
 if(!dir.exists(image_dir)){
-  dir.create(image_dir)
+ dir.create(image_dir)
 }
 ```
 

@@ -3,16 +3,19 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  input_counts: "..\\data_analysis\\CG_red_filtered_counts.csv"
+  input_counts: "..\\data_analysis\\CM_red_filtered_counts.csv"
   input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CG"
-  traits: "..\\data_analysis\\CG_traits.csv"
+  regex: "CM"
+  traits: "..\\data_analysis\\CM_traits.csv"
   sw: "..\\annotation\\sw_gene_info.csv"
 ---
 
 ```{r}
 library(WGCNA)
 options(stringsAsFactors = FALSE)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
 ```
 
 ```{r}
@@ -74,36 +77,38 @@ if(!gsg$allOK){
 sampleTree = hclust(dist(dat0), method = "average")
 par(cex = 0.6)
 par(mar = c(0,4,2,0))
+
+png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sample_clustering_dendrogram.png"), width = 700)
+
 plot(sampleTree, main = "Sample clustering to detect outliers", sub = "", xlab = "", cex.lab = 1.5, cex.axis = 1.5, cex.main = 2)
+
+dev.off()
 ```
 
 ```{r}
-#skip if no outliers
-if(params$regex == "CG"){
-  clust = cutreeStatic(sampleTree, cutHeight = 15000, minSize = 5)
-}else if(params$regex == "CB"){
-  clust = cutreeStatic(sampleTree, cutHeight = 30000, minSize = 5)
+if(params$regex == "CL"){
+  datExpr = dat0
+  nGenes = ncol(datExpr)
+  nSamples = nrow(datExpr)
+  datExpr
+}else {
+  if(params$regex == "CG"){
+    clust = cutreeStatic(sampleTree, cutHeight = 15000, minSize = 5)
+  }else if(params$regex == "CB"){
+    clust = cutreeStatic(sampleTree, cutHeight = 30000, minSize = 5)
+  }else if(params$regex == "CM"){
+    clust = cutreeStatic(sampleTree, cutHeight = 11000, minSize = 5)
+  }
+  table(clust)
+  #clust 1 contains the samples we want to keep
+  keepSamples = (clust == 1)
+  datExpr = dat0[keepSamples, ]
+  nGenes = ncol(datExpr)
+  nSamples = nrow(datExpr)
+  datExpr
 }
 
-table(clust)
 
-```
-
-```{r}
-#skip if no outliers
-#clust 1 contains the samples we want to keep
-keepSamples = (clust == 1)
-datExpr = dat0[keepSamples, ]
-nGenes = ncol(datExpr)
-nSamples = nrow(datExpr)
-datExpr
-```
-
-```{r}
-#skip if outliers
-datExpr = dat0
-nGenes = ncol(datExpr)
-nSamples = nrow(datExpr)
 ```
 
 
@@ -152,6 +157,8 @@ par(mfrow = c(1,2))
 cex1 = 0.9
 
 #scale-free topology fit index as a function of the soft-thresholding power
+#png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_soft_thresholding.png"))
+
 plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2], xlab = "Soft Threshold (power)", ylab = "Scale Free Topology Model Fit,signed R^2", type = "n", main = paste("Scale independence"))
 
 text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2], labels = powers, cex = cex1, col = "red")
@@ -159,15 +166,26 @@ text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2], labels = 
 #this line corresponds to using an R^2 cut-off of h
 abline(h=0.90, col= "red")
 
+#dev.off()
+
 #mean connectivity as a function of the soft-thresholding power
-plot(sft$fitIndices[,1], sft$fitIndices[,5], xlab = "Soft Threshold (power)", ylab = "Mean connectivity", type = "n", main = paste("Mean connectivity"))
+#png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_mean_connectivity.png"))
+
+plot(sft$fitIndices[9:20,1], sft$fitIndices[9:20,5], xlab = "Soft Threshold (power)", ylab = "Mean connectivity", type = "n", main = paste("Mean connectivity"))
 text(sft$fitIndices[,1], sft$fitIndices[,5], labels = powers, cex = cex1, col = "red")
+
+#dev.off()
 ```
 
 ```{r}
+#use 9 if <20 samples, scale free topology index fails to reach 0.8 at <15, and mean connectivity remains in the 100s. See WGCNA FAQ's for more info
 if(params$regex == "CG"){
-  spower = 18
+  spower = 9
 }else if(params$regex == "CB"){
+  spower = 9
+}else if(params$regex == "CL"){
+  spower = 12
+}else if(params$regex == "CM"){
   spower = 9
 }
 
@@ -209,14 +227,23 @@ moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 ```
 
 ```{r}
+write.csv(moduleTraitPvalue, paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_module_trait_info.csv"))
+```
+
+
+```{r}
 #graphical representation
 #display correlation and p value if <= 0.05, - if not
 textMatrix = paste(ifelse(moduleTraitPvalue <= 0.05, paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")",  sep = ""), "-"))
 dim(textMatrix) = dim(moduleTraitCor)
-par(mar = c(6, 8.5, 3, 3))
 
 #display correlation values within a heatmap
+png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_labeled_heatmap.png"), width = 1000, height = 700)
+
+par(mar = c(9, 12.5, 3, 3))
 labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = names(MEs), ySymbols = names(MEs), colorLabels = FALSE, colors = greenWhiteRed(50), textMatrix = textMatrix, setStdMargins = FALSE, cex.text = 0.5, zlim = c(-1,1), main = paste("Module-trait relationships"))
+
+dev.off()
 ```
 
 
@@ -303,6 +330,38 @@ sigGeneInfo = subset(geneInfo, paste0("ME", geneInfo$moduleColor) %in% rownames(
 fix(geneInfo)
 ```
 
+
+
+```{r}
+tMEs = as.data.frame(t(MEs))
+
+tMEs$reg = apply(tMEs, MARGIN = 1, FUN = function(x){ if(median(x) > 0){return("up")}else{return("down")}})
+
+tMEs
+
+tMEs$module = sapply(strsplit(rownames(tMEs), "ME", fixed = TRUE), function(x) x[2])
+
+tMEs = pivot_longer(tMEs, cols = starts_with(params$regex), names_to = "sample", values_to = "ME")
+tMEs = merge(tMEs, data.frame(sample = rownames(datTraits), treatment = c(rep("control", times = sum(datTraits$Control)), rep("relaxation", times = sum(datTraits$Relaxation)), rep("upwelling", times = sum(datTraits$Upwelling)))))
+tMEs
+sig_tMEs = subset(tMEs, tMEs$module %in% unique(sigGeneInfo$moduleColor))
+
+#sig_tMEs$mean =  as.factor(ave(sig_tMEs$, as.factor(mtcars$cyl), FUN=mean))
+
+
+
+ggplot(sig_tMEs, aes(x = module, y = ME, fill = reg)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 10)) + ggtitle("Significant module eigengene distributions") + ylab("Module eigengene expression") + geom_hline(yintercept = 0, color = "red") + scale_fill_manual(values = c("up" = "#FF7F7F", "down" = "lightblue"))
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_dist_boxplot.png"))
+
+ggplot(sig_tMEs, aes(x = as.factor(treatment), y = ME)) + geom_boxplot() + facet_wrap(~module) + geom_hline(yintercept = 0, color = "red") + xlab("treatment") + ggtitle("Significant module eigengene expression by treatment")
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_treatment_boxplot.png"))
+```
+
+
+
+
 ```{r}
 write.csv(geneInfo, paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_module_info.csv"))
 
@@ -319,9 +378,9 @@ for(module in unique(sigGeneInfo$moduleColor)){
 #this chunk may take a while
 dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = spower)
 plotTOM = dissTom^7
-diag(plotTOM) = NA
-sizeGrWindow(9,9)
-TOMplot(plotTOM, geneTree, moduleColors, main = "Network heatmap plot, all genes")
+#diag(plotTOM) = NA
+#sizeGrWindow(9,9)
+#TOMplot(plotTOM, geneTree, moduleColors, main = "Network heatmap plot, all genes")
 ```
 
 ```{r}
@@ -331,8 +390,8 @@ TOMplot(plotTOM, geneTree, moduleColors, main = "Network heatmap plot, all genes
 MEs = moduleEigengenes(datExpr, moduleColors)$eigengenes
 
 #Isolate wanted physiological traits from the trait dataframe
-weight = as.data.frame(datTraits$weight_g)
-names(weight) = "weight"
+#weight = as.data.frame(datTraits$weight_g)
+#names(weight) = "weight"
 
 #add the weight to existing module eigengenes
 MET = orderMEs(cbind(MEs, weight))
@@ -352,8 +411,47 @@ par(cex = 1.0)
 plotEigengeneNetworks(MET, "Eigengene adjancency heatmap", marHeatmap = c(3,4,2,2), plotDendrograms = FALSE, xLabelsAngle = 90)
 ```
 
+```{r}
+#visualizing the network of significant eigengenes
+
+#recalculate module eigengenes
+MEs = moduleEigengenes(datExpr, moduleColors)$eigengenes
+
+#select only significant modules
+#MEs$module = sapply(strsplit(names(MEs), "ME", fixed = TRUE), function(x) x[2])
+#MEs
+sig_MEs = select(MEs, contains(unique(sigGeneInfo$moduleColor)))
+#sig_MEs = subset(sig_MEs, select = -c(module))
+
+#Isolate wanted physiological traits from the trait dataframe
+#weight = as.data.frame(datTraits$weight_g)
+#names(weight) = "weight"
+
+#add the weight to existing module eigengenes
+MET = orderMEs(cbind(sig_MEs, weight))
+sizeGrWindow(5, 7.5)
+par(cex = 0.9)
+plotEigengeneNetworks(MET, "", marDendro = c(0,4,1,2), marHeatmap = c(3,4,1,2), cex.lab = 0.8, xLabelsAngle = 90, colorLabels = FALSE)
+#plot the dendrogram
+sizeGrWindow(6,6)
+
+png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_trait_dendrogram.png"), width = 950, height = 600)
+
+par(cex = 1.0)
+plotEigengeneNetworks(MET, "Eigengene dendrogram", marDendro = c(0,4,2,0), plotHeatmaps = FALSE)
+
+dev.off()
+```
 
 
+```{r}
+#plot the heatmap matrix
+png(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_trait_heatmap.png"), width = 950, height = 600)
+par(cex = 1.0)
+plotEigengeneNetworks(MET, "Eigengene correlation heatmap", marHeatmap = c(13,14,2,2), plotDendrograms = FALSE, xLabelsAngle = 90, colorLabels = FALSE, plotAdjacency = FALSE)
+
+dev.off()
+```
 
 
 

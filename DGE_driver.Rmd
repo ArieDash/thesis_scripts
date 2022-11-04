@@ -292,7 +292,7 @@ tissues = c()
 
 #tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
-#tissues = append(tissues, "CM")
+tissues = append(tissues, "CM")
 #tissues = append(tissues, "CL")
 
 
@@ -306,7 +306,7 @@ for(type in types){
        
        baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
        
-       listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
+       listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
        
        xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout)))
     }
