@@ -10,12 +10,13 @@ params:
   sw: "..\\annotation\\sw_gene_info.csv"
 ---
 
+
 ```{r}
 library(WGCNA)
 options(stringsAsFactors = FALSE)
 library(ggplot2)
-library(tidyr)
-library(dplyr)
+library(egg)
+library(tidyverse)
 ```
 
 ```{r}
@@ -246,6 +247,23 @@ labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = na
 dev.off()
 ```
 
+```{r}
+convert_to_index = function(i, dim1){
+  return(c(((i-1)%%dim1)+1, ceiling(i/dim1)))
+}
+```
+
+
+```{r}
+#convert raw indices of significant associations between modules and traits into row, column pairs (row = module, column  = trait) that can be indexed into matrix
+sig_pos = lapply(which(textMatrix != "-"), convert_to_index, dim(textMatrix)[1])
+
+#select significant associations with categorical variables
+sig_categorical = compact(mapply(sig_pos, FUN = function(x){if(x[2] <= 3){return(x)}}))
+
+#select significant associations with continuous variables
+sig_continuous = compact(mapply(sig_pos, FUN = function(x){if(x[2] > 3){return(x)}}))
+```
 
 
 ```{r}
@@ -331,25 +349,93 @@ fix(geneInfo)
 ```
 
 
-
 ```{r}
 tMEs = as.data.frame(t(MEs))
 
 tMEs$reg = apply(tMEs, MARGIN = 1, FUN = function(x){ if(median(x) > 0){return("up")}else{return("down")}})
 
-tMEs
-
 tMEs$module = sapply(strsplit(rownames(tMEs), "ME", fixed = TRUE), function(x) x[2])
 
 tMEs = pivot_longer(tMEs, cols = starts_with(params$regex), names_to = "sample", values_to = "ME")
 tMEs = merge(tMEs, data.frame(sample = rownames(datTraits), treatment = c(rep("control", times = sum(datTraits$Control)), rep("relaxation", times = sum(datTraits$Relaxation)), rep("upwelling", times = sum(datTraits$Upwelling)))))
+tMEs = merge(tMEs, cbind(datTraits[-c(1:3)], sample = rownames(datTraits)))
 tMEs
-sig_tMEs = subset(tMEs, tMEs$module %in% unique(sigGeneInfo$moduleColor))
-
-#sig_tMEs$mean =  as.factor(ave(sig_tMEs$, as.factor(mtcars$cyl), FUN=mean))
+```
 
 
+```{r}
+#get modules with significant associations with categorical modules
+sig_cat_names = mapply(sig_categorical, FUN = function(x){return(x[1])})
+#convert index to module names from moduleTraitCor so they are in the same order as the text matrix we pulled the significance info from
+sig_cat_names = rownames(moduleTraitCor)[sig_cat_names]
+#remove the ME from the start and remove duplicates
+sig_cat_names = unique(sapply(strsplit(sig_cat_names, "ME", fixed = TRUE), function(x) x[2]))
 
+#select only modules that have significant associations with categorical variables
+sig_cat_tMEs = subset(tMEs, tMEs$module %in% sig_cat_names)
+
+
+
+ggplot(sig_cat_tMEs, aes(x = module, y = ME, fill = reg)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 10)) + ggtitle("Significant module eigengene distributions") + ylab("Module eigengene expression") + geom_hline(yintercept = 0, color = "red") + scale_fill_manual(values = c("up" = "#FF7F7F", "down" = "lightblue"))
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_dist_boxplot.png"))
+
+ggplot(sig_cat_tMEs, aes(x = as.factor(treatment), y = ME)) + geom_boxplot() + facet_wrap(~module) + geom_hline(yintercept = 0, color = "red") + xlab("treatment") + ggtitle("Significant module eigengene expression by treatment")
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_treatment_boxplot.png"))
+```
+
+```{r}
+graph_sig_cont = function(i, sig_continuous, names_list, traits_list, tMEs){
+  #get modules with significant associations with categorical modules
+  sig_cont_names = unlist(compact(mapply(sig_continuous, FUN = function(x){if(x[2] == i){return(x[1])}})))
+  #convert index to module names
+  sig_cont_names = names_list[sig_cont_names]
+  #remove the ME from the start and remove duplicates
+  sig_cont_names = unique(sapply(strsplit(sig_cont_names, "ME", fixed = TRUE), function(x) x[2]))
+  
+  
+  sig_cont_tMEs = subset(tMEs, tMEs$module %in% sig_cont_names)
+  
+  if(length(sig_cont_tMEs) == 1){
+    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point()
+  }else if(length(sig_cont_tMEs > 1)){
+    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point() + facet_wrap(~module)
+  }
+}
+```
+
+
+```{r}
+plot_list = compact(lapply(c(4:length(colnames(moduleTraitCor))), graph_sig_cont, sig_continuous, rownames(moduleTraitCor), colnames(moduleTraitCor), tMEs))
+
+arrange = ggarrange(plots = plot_list)
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_response_scatterplot.png"), plot = arrange)
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+#get modules with significant associations with categorical modules
+sig_cont_names = mapply(sig_continuous, FUN = function(x){return(x[1])})
+#convert index to module names from moduleTraitCor so they are in the same order as the text matrix we pulled the significance info from
+sig_cont_names = rownames(moduleTraitCor)[sig_cont_names]
+#remove the ME from the start and remove duplicates
+sig_cont_names = unique(sapply(strsplit(sig_cont_names, "ME", fixed = TRUE), function(x) x[2]))
+
+
+sig_cont_tMEs = subset(tMEs, tMEs$module %in% sig_cont_names)
+
+ggplot(sig_cont_tMEs, aes())
+```
+
+
+```{r}
 ggplot(sig_tMEs, aes(x = module, y = ME, fill = reg)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 10)) + ggtitle("Significant module eigengene distributions") + ylab("Module eigengene expression") + geom_hline(yintercept = 0, color = "red") + scale_fill_manual(values = c("up" = "#FF7F7F", "down" = "lightblue"))
 
 ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_dist_boxplot.png"))
@@ -360,6 +446,19 @@ ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_treat
 ```
 
 
+```{r}
+geneModuleMembership
+MMPvalue
+temp1 = subset(MMPvalue, MMPvalue$p.MMdarkgrey < 0.05, select = p.MMdarkgrey)
+temp2 = subset(geneInfo, geneInfo$moduleColor == "darkgrey")
+temp1$gene = rownames(temp1)
+temp2$gene = rownames(temp2)
+temp3 = merge(subset(MMPvalue, MMPvalue$p.MMdarkgrey < 0.05, select = p.MMdarkgrey), subset(geneInfo, geneInfo$moduleColor == "darkgrey"), all.x = TRUE)
+temp1
+temp2
+subset(temp3, temp3$moduleColor == "darkgrey")
+setdiff(unique(rownames(temp1)), unique(rownames(temp2)))
+```
 
 
 ```{r}
