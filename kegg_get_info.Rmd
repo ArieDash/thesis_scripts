@@ -1,0 +1,139 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyr)
+library(KEGGREST)
+```
+
+
+
+```{r}
+degs = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\WGCNA_output\\CB_sig_module_antiquewhite4_info.csv")
+gtm = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\gene_trans_map.csv")
+info = read.csv("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\sw_gene_info.csv")
+info = info[,-1]
+names(degs)[names(degs) == "X"] = "accession_id"
+```
+
+```{r}
+de_info = merge(info, degs)
+de_info
+```
+
+```{r}
+subset(de_info, grepl("transcription factor", de_info$go.molecular_function.))
+```
+
+```{r}
+subset(info, grepl("ALO", info$gene_name))
+```
+
+```{r}
+chunk = function(ele, x){
+  chunk_list = list()
+  for(i in 1:floor(length(ele)/x)){
+    chunk_list[[i]] = list(unname(ele[((i-1)*x+1):(x*i)]))
+  }
+  #if there are still ids remaining (length was not exactly divisible by x), add them in now
+  if(length(ele)%%x != 0){
+    i = ceiling(length(ele)/x)
+    chunk_list[[i]] = list(unname(ele[((i-1)*x+1):(length(ele))]))
+  }
+  return(chunk_list)
+}
+```
+
+
+```{r}
+get_unlimited = function(id_list){
+  chunk_list = chunk(id_list, 10)
+  ret = data.frame(uniprot_id = sapply(strsplit(names(id_list), ":"), function(x) x[2]), kegg_gene = unname(id_list), path_name = NA, path_desc = NA)
+  for(i in 1:length(chunk_list)){
+    print(paste0("processing chunk ", i, " of ", length(chunk_list)))
+    temp = keggGet(unlist(chunk_list[[i]]))
+    for(j in 1:length(temp)){
+      ret[(j+(i-1)*10), 3] = ifelse(is.null(names(temp[[j]]$PATHWAY)), NA, names(temp[[j]]$PATHWAY))
+      ret[(j+(i-1)*10), 4] = ifelse(is.null(unname(temp[[j]]$PATHWAY)), NA, unname(temp[[j]]$PATHWAY))
+    }
+  }
+  return(ret)
+}
+```
+
+
+```{r}
+uniprot_list = unname(sapply(info$accession_id, function(x){paste0("uniprot:", x)}))
+uniprot_chunks = chunk(uniprot_list, 100)
+```
+
+
+```{r}
+conv_list = c()
+i = 1
+for(ele in uniprot_chunks){
+  print(paste0("processing chunk ", i, " of ", length(uniprot_chunks)))
+  conv_list = append(conv_list, keggConv(target = "genes", source = unlist(ele)))
+  i = i+1
+}
+```
+
+
+```{r}
+write.csv(data.frame(uniprot_gene = names(conv_list), kegg_gene = unname(conv_list)), "..\\data_analysis\\sw_kegg_conversion_list.csv")
+```
+
+```{r}
+pathway_map = get_unlimited(na.omit(conv_list))
+```
+
+```{r}
+write.csv(pathway_map, "..\\data_analysis\\sw_kegg_pathway_map.csv")
+```
+
+
+```{r}
+subset(pathway_map, grepl("Pentose phosphate pathway", pathway_map$path_desc))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
