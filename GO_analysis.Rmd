@@ -245,16 +245,17 @@ even_GO_Depth = function(lineage, terms_df, depth = 2){
 }
 ```
 
+This is currently set to only output significant enrichment pie charts since the others did not turn out to be very useful
 
 ```{r}
 #only run this if there are GO terms in the dataframe
 if(nrow(MF_all_terms) > 0){
-  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list", pdf_file = paste0(params$baseout, "all_MF.pdf"), width = 12.5)
+  #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_terms, main = "Molecular Function GO composition of total DE list", pdf_file = paste0(params$baseout, "all_MF.pdf"), width = 12.5)
   
-  MF_all_even = even_GO_Depth("MF", MF_all_terms, depth = 2)
-  if(nrow(MF_all_even) > 0){
-    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_even, main = "Molecular Function GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_MF.pdf"), width = 12.5)
-  }
+  #MF_all_even = even_GO_Depth("MF", MF_all_terms, depth = 2)
+#  if(nrow(MF_all_even) > 0){
+    #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_all_even, main = "Molecular Function GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_MF.pdf"), width = 12.5)
+#  }
 }
 ```
 
@@ -274,19 +275,19 @@ write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 
 ```{r}
 if(nrow(MF_sig_terms) > 0){
- PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
+ #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
 }
 ```
 
 ```{r}
 if(nrow(BP_all_terms) > 0){
-  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list", pdf_file = paste0(params$baseout, "all_BP.pdf"), width = 12.5)
+  #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_terms, main = "Biological Process GO composition of total DE list", pdf_file = paste0(params$baseout, "all_BP.pdf"), width = 12.5)
   
-  BP_all_even = even_GO_Depth("BP", BP_all_terms, depth = 2)
+  #BP_all_even = even_GO_Depth("BP", BP_all_terms, depth = 2)
 
-  if(nrow(BP_all_even) > 0){
-    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_even, main = "Biological Process GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_BP.pdf"), width = 12.5)
-  }
+ # if(nrow(BP_all_even) > 0){
+    #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_all_even, main = "Biological Process GO composition of total DE list at 2-term depth", pdf_file = paste0(params$baseout, "all_even_BP.pdf"), width = 12.5)
+#  }
 }
 ```
 
@@ -299,13 +300,13 @@ if(nrow(BP_sig_terms) > 0){
 
 ```{r}
 if(nrow(CC_all_terms) > 0){
-  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list", pdf_file = paste0(params$baseout, "all_CC.pdf"), width = 12.5)
+  #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_terms, main = "Cellular Component GO composition of total DE list", pdf_file = paste0(params$baseout, "all_CC.pdf"), width = 12.5)
   
-  CC_all_even = even_GO_Depth("CC", CC_all_terms, depth = 3)
+  #CC_all_even = even_GO_Depth("CC", CC_all_terms, depth = 3)
 
-  if(nrow(CC_all_even) > 0){
-    PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_even, main = "Cellular Component GO composition of total DE list at 3-term depth", pdf_file = paste0(params$baseout, "all_even_CC.pdf"), width = 12.5)
-  }
+ # if(nrow(CC_all_even) > 0){
+    #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_all_even, main = "Cellular Component GO composition of total DE list at 3-term depth", pdf_file = paste0(params$baseout, "all_even_CC.pdf"), width = 12.5)
+#  }
 }
 ```
 

@@ -3,10 +3,10 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  input_counts: "..\\data_analysis\\CM_red_filtered_counts.csv"
+  input_counts: "..\\data_analysis\\CB_red_filtered_counts.csv"
   input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CM"
-  traits: "..\\data_analysis\\CM_traits.csv"
+  regex: "CB"
+  traits: "..\\data_analysis\\CB_traits.csv"
   sw: "..\\annotation\\sw_gene_info.csv"
 ---
 
@@ -32,22 +32,6 @@ data = read.csv(params$input_counts)
 rownames(data) = data$X
 #remove column containing geneids
 data =  data[,-1]
-data
-```
-
-
-```{r}
-#don't use
-
-#read in txi data (counts and length offset)
-c_l = read.csv(params$input_counts)
-#set rownames to geneids
-rownames(c_l) = c_l$X
-#remove column containing geneids
-c_l = c_l[,-1]
-#extract counts and lengths tables from dataframe
-data = c_l[,1:length(samples$Name)]
-colnames(data) = samples$Name
 data
 ```
 
@@ -304,7 +288,6 @@ verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]), abs(geneTrait
 ```{r}
 sw = read.csv (params$sw)
 annot = sw [, -1]
-annot
 ```
 
 ```{r}
@@ -336,7 +319,7 @@ geneInfo = geneInfo[geneOrder, ]
 
 ```{r}
 #select the vector index of significant cells in the Pvalue matrix, then mod by the number of modules (rows) to convert to row index. Then remove duplicates in case a module was significantly associated with more than one trait
-sigRows = unique(which(moduleTraitPvalue < 0.05)%%length(table(net$colors)))
+sigRows = unique((which(moduleTraitPvalue < 0.05)-1)%%length(table(net$colors))+1)
 
 #select only those modules that were signicantly correlated with at least one trait
 sigGeneInfo = subset(geneInfo, paste0("ME", geneInfo$moduleColor) %in% rownames(moduleTraitPvalue[sigRows,]))
@@ -347,6 +330,28 @@ sigGeneInfo = subset(geneInfo, paste0("ME", geneInfo$moduleColor) %in% rownames(
 ```{r}
 fix(geneInfo)
 ```
+
+```{r}
+get_top_n = function(mod_color, df, max_n){
+  temp = subset(df, df$moduleColor == mod_color)
+  column = which(colnames(temp) == paste0("MM.", mod_color))
+  temp = temp[order(temp[,column]),]
+  subset(temp, abs(temp[,column]) >= max_n)
+}
+```
+
+```{r}
+write.csv(geneInfo, paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_module_info.csv"))
+
+
+for(module in unique(sigGeneInfo$moduleColor)){
+  write.csv(subset(sigGeneInfo, sigGeneInfo$moduleColor == module), paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_sig_module_", module, "_info.csv"))
+  
+  write.csv(get_top_n(module, geneInfo, 0.95), paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_sig_module_", module, "_top_n_info.csv"))
+}
+
+```
+
 
 
 ```{r}
@@ -415,68 +420,11 @@ ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_respo
 ```
 
 
-```{r}
-
-```
-
-
-```{r}
-#get modules with significant associations with categorical modules
-sig_cont_names = mapply(sig_continuous, FUN = function(x){return(x[1])})
-#convert index to module names from moduleTraitCor so they are in the same order as the text matrix we pulled the significance info from
-sig_cont_names = rownames(moduleTraitCor)[sig_cont_names]
-#remove the ME from the start and remove duplicates
-sig_cont_names = unique(sapply(strsplit(sig_cont_names, "ME", fixed = TRUE), function(x) x[2]))
-
-
-sig_cont_tMEs = subset(tMEs, tMEs$module %in% sig_cont_names)
-
-ggplot(sig_cont_tMEs, aes())
-```
-
-
-```{r}
-ggplot(sig_tMEs, aes(x = module, y = ME, fill = reg)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1, size = 10)) + ggtitle("Significant module eigengene distributions") + ylab("Module eigengene expression") + geom_hline(yintercept = 0, color = "red") + scale_fill_manual(values = c("up" = "#FF7F7F", "down" = "lightblue"))
-
-ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_dist_boxplot.png"))
-
-ggplot(sig_tMEs, aes(x = as.factor(treatment), y = ME)) + geom_boxplot() + facet_wrap(~module) + geom_hline(yintercept = 0, color = "red") + xlab("treatment") + ggtitle("Significant module eigengene expression by treatment")
-
-ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$regex, "_sig_ME_treatment_boxplot.png"))
-```
-
-
-```{r}
-geneModuleMembership
-MMPvalue
-temp1 = subset(MMPvalue, MMPvalue$p.MMdarkgrey < 0.05, select = p.MMdarkgrey)
-temp2 = subset(geneInfo, geneInfo$moduleColor == "darkgrey")
-temp1$gene = rownames(temp1)
-temp2$gene = rownames(temp2)
-temp3 = merge(subset(MMPvalue, MMPvalue$p.MMdarkgrey < 0.05, select = p.MMdarkgrey), subset(geneInfo, geneInfo$moduleColor == "darkgrey"), all.x = TRUE)
-temp1
-temp2
-subset(temp3, temp3$moduleColor == "darkgrey")
-setdiff(unique(rownames(temp1)), unique(rownames(temp2)))
-```
-
-
-```{r}
-write.csv(geneInfo, paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_module_info.csv"))
-
-
-for(module in unique(sigGeneInfo$moduleColor)){
-  write.csv(subset(sigGeneInfo, sigGeneInfo$moduleColor == module), paste0("..\\data_analysis\\", "WGCNA_output\\", params$regex, "_sig_module_", module, "_info.csv"))
-}
-
-```
-
-
 #Network visualization using WGCNA functions
 ```{r}
 #this chunk may take a while
-dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = spower)
-plotTOM = dissTom^7
+#dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = spower)
+#plotTOM = dissTom^7
 #diag(plotTOM) = NA
 #sizeGrWindow(9,9)
 #TOMplot(plotTOM, geneTree, moduleColors, main = "Network heatmap plot, all genes")

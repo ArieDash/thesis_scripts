@@ -266,6 +266,7 @@ for(type in types){
 
 ```
 
+
 ```{r}
 #WGCNA GO analysis chunk
 
@@ -290,25 +291,31 @@ types = append(types, "red")
 #Regex of samples names we want to keep
 tissues = c()
 
-#tissues = append(tissues, "CB")
+tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
-#tissues = append(tissues, "CL")
+#tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
 
 
 for(type in types){
   for(tissue in tissues){
     sig_modules = list.files("..\\data_analysis\\WGCNA_output\\", pattern = paste0(tissue, "_sig"), full.names = TRUE)
     for(sig_module in sig_modules){
-       de = sig_module 
 
        counts = paste0("..\\data_analysis\\", tissue, "_", type, "_txi.csv")
+       if(strsplit(sig_module, "_")[[1]][7] == "top"){
+         baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_top_")
+         
+         listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][4], "_top_")
+       }else{
+          baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
+          
+          listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][4], "_")
+       }
        
-       baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
        
-       listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
        
-       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout)))
+       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = sig_module, counts = counts, baseout = baseout, listout = listout)))
     }
   }
 }
