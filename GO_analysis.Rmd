@@ -8,6 +8,7 @@ params:
   info: "..\\annotation\\sw_gene_info.csv"
   baseout : ""
   listout : ""
+  kegg : 0
 ---
 
 ```{r}
@@ -132,12 +133,40 @@ go_terms
 ```
 
 ```{r}
+#KEGG terms
+if(params$kegg){
+  #read in annotation info
+  gene_info = read.csv(params$info)
+  #only keep id and KEGG columns
+  #Ok to keep as a dataframe because it is a one to one mapping
+  gene2cat = gene_info[,c("accession_id", "path_desc")]
+  
+  go_kegg = goseq(pwf = pwf, gene2cat = gene2cat, method = "Wallenius")
+  go_kegg$over_represented_pvalue = p.adjust(go_kegg$over_represented_pvalue, method = "fdr")
+  go_kegg$under_represented_pvalue = p.adjust(go_kegg$under_represented_pvalue, method = "fdr")
+  go_kegg = subset(go_kegg, go_kegg$over_represented_pvalue <= 0.05 | go_kegg$under_represented_pvalue <= 0.05)
+  go_kegg
+  
+  #if there are signifcantly enriched KEGG pathways
+  if(nrow(go_kegg) > 0){
+    #save sig list
+    write.csv(go_kegg, paste0(params$listout, "sig_KEGG_list.csv"))
+    
+    #create figure
+    PieChart(x = category, y = numDEInCat, hole = 0, values = "%", data = go_kegg, main = "KEGG pathway composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_KEGG.pdf"), width = 12.5)
+  }
+}
+```
+
+```{r}
 #GO composition DE list
 MF_all_terms = subset(go_terms, go_terms$ontology == "MF", select = c(term, numDEInCat, category))
 BP_all_terms = subset(go_terms, go_terms$ontology == "BP", select = c(term, numDEInCat, category))
 CC_all_terms = subset(go_terms, go_terms$ontology == "CC", select = c(term, numDEInCat, category))
 sum(MF_all_terms$numDEInCat)
 ```
+
+
 ```{r}
 splitCount = function(x) { x[1]/length(x)}
 ```
@@ -275,7 +304,7 @@ write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 
 ```{r}
 if(nrow(MF_sig_terms) > 0){
- #PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
+ PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
 }
 ```
 

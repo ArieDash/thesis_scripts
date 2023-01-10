@@ -94,6 +94,20 @@ pathway_map = get_unlimited(na.omit(conv_list))
 write.csv(pathway_map, "..\\data_analysis\\sw_kegg_pathway_map.csv")
 ```
 
+```{r}
+pathway_map = read.csv("..\\data_analysis\\sw_kegg_pathway_map.csv")
+pathway_map = pathway_map[-1]
+```
+
+
+```{r}
+sw_kegg_info = merge(info, pathway_map, by.x = "accession_id", by.y = "uniprot_id", all.x = TRUE)
+```
+
+```{r}
+write.csv(sw_kegg_info, "..\\annotation\\sw_kegg_info.csv")
+```
+
 
 ```{r}
 subset(pathway_map, grepl("Pentose phosphate pathway", pathway_map$path_desc))
