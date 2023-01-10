@@ -108,7 +108,18 @@ write.csv(pref_sp, "..\\annotation\\gene_trans_map.csv")
 ```
 
 
+```{r}
+#input genome swissprot data
+sp = read.csv("..\\annotation\\genome_swissprot.tsv", sep = "\t", header = FALSE)
+sp = sp[,c(1,2)]
+colnames(sp) = c("transcript_name", "gene_name")
+sp$origin = "swissprot"
+```
 
+```{r}
+#write genome gene_trans_map to file
+write.csv(sp, "..\\annotation\\genome_gene_trans_map.csv")
+```
 
 
 

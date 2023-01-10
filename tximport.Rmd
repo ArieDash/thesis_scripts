@@ -7,6 +7,7 @@ params:
   out: ""
   input_samples: ""
   regex: ""
+  samples_location: ""
   gtm: "..\\annotation\\gene_trans_map.csv"
 ---
 
@@ -44,10 +45,8 @@ gene_trans_map = gene_trans_map[,2:3]
 
 
 ```{r}
-
-
 #create vector pointing to files
-files = file.path("..\\mapping", samples, "quant.sf")
+files = file.path(params$samples_location, samples, "quant.sf")
 names(files) = samples
 
 #check to make sure all files exist
