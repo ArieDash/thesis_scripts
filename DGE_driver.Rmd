@@ -118,6 +118,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
+genome = "genome_"
+#genome = ""
 
 #if we want to install the package. Set to 1 to install
 install = 0
@@ -127,19 +129,19 @@ for(regex in tissues){
     #samples description file
     input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
 
-    input_counts = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
+    input_counts = paste0("..\\data_analysis\\", genome, regex, "_", type, "_txi.csv")
     
     #Path to output directory for filtered gene lists for WGCNA
-    counts_out = paste0("..\\data_analysis\\", regex, "_", type, "_filtered_counts.csv")
+    counts_out = paste0("..\\data_analysis\\", genome, regex, "_", type, "_filtered_counts.csv")
     
     #Path to output directory for DEG lists
-    deg_out = paste0("..\\data_analysis\\DE_lists\\", regex, "_", type, "_")
+    deg_out = paste0("..\\data_analysis\\DE_lists\\", genome, regex, "_", type, "_")
     
     #Path to output directory for images
-    image_out = paste0("..\\data_analysis\\images\\", regex, "_", type, "\\", regex, "_", type, "_")
+    image_out = paste0("..\\data_analysis\\images\\", genome, regex, "_", type, "\\", genome, regex, "_", type, "_")
 
     #path to and name of output report file
-    #if it errors, try using just the file name output and moving it where you want afterwards. I was having some         issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it     wrote the .tex file to the location just fine
+    #if it errors, try using just the file name output and moving it where you want afterwards. I was having some issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it wrote the .tex file to the location just fine
     report_output = paste0(regex, "_", type, "_LRT.pdf")
 
     #render script in new R session to isolate it

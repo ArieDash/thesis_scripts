@@ -34,8 +34,9 @@ library(ggvenn)
 
 ```{r}
 #check to make sure output directories exist, create them if not
-deg_dir = unlist(strsplit(params$deg_out, params$regex))[1]
-image_dir = unlist(strsplit(params$image_out, paste0(params$regex, "_[^_]*_$")))
+deg_dir = unlist(strsplit(params$deg_out, "\\\\[^\\]*$"))[1]
+image_dir = unlist(strsplit(params$image_out, "\\\\[^\\]*$"))
+
 if(!dir.exists(deg_dir)){
   dir.create(deg_dir)
 }
