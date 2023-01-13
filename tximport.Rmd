@@ -8,7 +8,8 @@ params:
   input_samples: ""
   regex: ""
   samples_location: ""
-  gtm: "..\\annotation\\gene_trans_map.csv"
+  txversion: TRUE
+  gtm: ""
 ---
 
 
@@ -54,7 +55,7 @@ all(file.exists(files))
 ```
 
 ```{r}
-txi = tximport(files, type = "salmon", tx2gene = gene_trans_map, ignoreTxVersion = TRUE)#, countsFromAbundance = "lengthScaledTPM")
+txi = tximport(files, type = "salmon", tx2gene = gene_trans_map, ignoreTxVersion = params$txversion)#, countsFromAbundance = "lengthScaledTPM")
 ```
 
 

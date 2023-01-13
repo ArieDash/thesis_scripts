@@ -46,12 +46,15 @@ for(regex in tissues){
   for(type in types){
     if(genome == TRUE){
       #file to write csv to
-      out = paste0("..\\data_analysis\\genome", regex, "_", type, "_txi.csv")
+      out = paste0("..\\data_analysis\\genome_", regex, "_", type, "_txi.csv")
       
       samples_location = "..\\mapping\\genome"
       
       #location of gene_trans_map
       gtm = "..\\annotation\\genome_gene_trans_map.csv"
+      
+      #ignore . in transcript name
+      txversion = FALSE
     }else{
       #file to write csv to
       out = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
@@ -60,12 +63,15 @@ for(regex in tissues){
       
       #location of gene_trans_map
       gtm = "..\\annotation\\gene_trans_map.csv"
+      
+      #ignore . in transcript name
+      txversion = TRUE
     }
     
     #names of file with salmon output folders
     input_samples = input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
 
-    rmarkdown::render(input = "tximport.Rmd", params = list(out = out, samples_location = samples_location, input_samples = input_samples, regex = regex))
+    rmarkdown::render(input = "tximport.Rmd", params = list(out = out, gtm = gtm, samples_location = samples_location, input_samples = input_samples, regex = regex, txversion = txversion))
 
     install = 0
     
