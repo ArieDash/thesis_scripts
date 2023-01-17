@@ -2,10 +2,10 @@
 title: "GO analysis"
 output: html_notebook
 params:
-  gtm: "..\\annotation\\gene_trans_map.csv"
+  gtm: ""
   de: ""
   counts: ""
-  info: "..\\annotation\\sw_gene_info.csv"
+  info: ""
   baseout : ""
   listout : ""
   kegg : 0

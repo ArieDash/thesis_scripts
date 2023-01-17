@@ -252,6 +252,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
+genome = "genome_"
+
 p = 0.05
 c = 1
 
@@ -272,15 +274,19 @@ for(type in types){
   for(tissue in tissues){
     for(comparison in comparisons){
       for(direction in directions){
-       de = paste0("..\\data_analysis\\DE_lists\\", tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, ".csv") 
+       de = paste0("..\\data_analysis\\DE_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, ".csv") 
 
-       counts = paste0("..\\data_analysis\\", tissue, "_", type, "_txi.csv")
+       counts = paste0("..\\data_analysis\\", genome, tissue, "_", type, "_txi.csv")
        
-       baseout = paste0("..\\data_analysis\\images\\", tissue, "_", type, "\\", tissue, "_", type, "_", comparison, "_", direction, "_")
+       baseout = paste0("..\\data_analysis\\images\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", comparison, "_", direction, "_")
        
-       listout = paste0("..\\data_analysis\\GO_lists\\", tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, "_")
+       listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, "_")
        
-       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout)))
+       gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
+       
+       info = paste0("..\\annotation\\sw_", genome, "gene_info.csv")
+       
+       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout, gtm = gtm, info = info)))
       }
     }
   }
@@ -314,31 +320,38 @@ types = append(types, "red")
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
+#tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
 #tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CL")
 
+#genome = ""
+#genome_inc = 0
+genome = "genome_"
+genome_inc = 1
 
 for(type in types){
   for(tissue in tissues){
-    sig_modules = list.files("..\\data_analysis\\WGCNA_output\\", pattern = paste0(tissue, "_sig"), full.names = TRUE)
+    sig_modules = list.files("..\\data_analysis\\WGCNA_output\\", pattern = paste0("^", genome, tissue, "_sig"), full.names = TRUE)
     for(sig_module in sig_modules){
 
-       counts = paste0("..\\data_analysis\\", tissue, "_", type, "_txi.csv")
-       if(strsplit(sig_module, "_")[[1]][7] == "top"){
-         baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_top_")
+       counts = paste0("..\\data_analysis\\", genome, tissue, "_", type, "_txi.csv")
+       if(strsplit(sig_module, "_")[[1]][7+genome_inc] == "top"){
+         baseout = paste0("..\\data_analysis\\images\\WGCNA\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6+genome_inc], "_top_")
          
-         listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][4], "_top_")
+         listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", genome, tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6+genome_inc], "_top_")
        }else{
-          baseout = paste0("..\\data_analysis\\images\\WGCNA\\", tissue, "_", type, "\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6], "_")
+          baseout = paste0("..\\data_analysis\\images\\WGCNA\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6+genome_inc], "_")
           
-          listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][4], "_")
+          listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\", genome, tissue, "_", type, "_", strsplit(sig_module, "_")[[1]][6+genome_inc], "_")
+          
        }
        
+       gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
        
+       info = paste0("..\\annotation\\sw_", genome, "gene_info.csv")
        
-       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = sig_module, counts = counts, baseout = baseout, listout = listout)))
+       xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = sig_module, counts = counts, baseout = baseout, listout = listout, gtm = gtm, info = info)))
     }
   }
 }
