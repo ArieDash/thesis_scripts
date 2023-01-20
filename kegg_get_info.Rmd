@@ -33,6 +33,7 @@ subset(info, grepl("ALO", info$gene_name))
 ```
 
 ```{r}
+#function to convert a list into a list of lists with each sublist containing x elements. Needed because the kegg servers only process a set maximum amount of entries per query and this will allow us to sequentially run these queries. In other words, we can break a list down into appropriately sized chunks, do operations on those chunks, and then concatenate the results from each chunk together.
 chunk = function(ele, x){
   chunk_list = list()
   for(i in 1:floor(length(ele)/x)){
@@ -49,13 +50,20 @@ chunk = function(ele, x){
 
 
 ```{r}
+#function to get information about each kegg id
 get_unlimited = function(id_list){
+  #break list down into chunk of size <=10
   chunk_list = chunk(id_list, 10)
+  #dataframe structure. can populate with some known values now
   ret = data.frame(uniprot_id = sapply(strsplit(names(id_list), ":"), function(x) x[2]), kegg_gene = unname(id_list), path_name = NA, path_desc = NA)
+  #iterate through chunk list
   for(i in 1:length(chunk_list)){
     print(paste0("processing chunk ", i, " of ", length(chunk_list)))
+    #get info for ids in chunk from kegg servers
     temp = keggGet(unlist(chunk_list[[i]]))
+    #process results for each kegg id
     for(j in 1:length(temp)){
+      #Looks fancy, but is just calculating the dataframe row number from the chunk number (i) and index (j) and setting the 3rd and 4th column values in the dataframe to the value returned for that kegg id if anything was returned.
       ret[(j+(i-1)*10), 3] = ifelse(is.null(names(temp[[j]]$PATHWAY)), NA, names(temp[[j]]$PATHWAY))
       ret[(j+(i-1)*10), 4] = ifelse(is.null(unname(temp[[j]]$PATHWAY)), NA, unname(temp[[j]]$PATHWAY))
     }
@@ -66,12 +74,15 @@ get_unlimited = function(id_list){
 
 
 ```{r}
+#add "uniprot:" to the start of each uniprot id so that it is in the proper format for kegg
 uniprot_list = unname(sapply(info$accession_id, function(x){paste0("uniprot:", x)}))
+#chunk the list
 uniprot_chunks = chunk(uniprot_list, 100)
 ```
 
 
 ```{r}
+#get mappings of uniprot ids to kegg ids
 conv_list = c()
 i = 1
 for(ele in uniprot_chunks){
@@ -83,14 +94,17 @@ for(ele in uniprot_chunks){
 
 
 ```{r}
+#previous step was long, so save output to disk so just in case something happens we don't have to do it again
 write.csv(data.frame(uniprot_gene = names(conv_list), kegg_gene = unname(conv_list)), "..\\data_analysis\\sw_kegg_conversion_list.csv")
 ```
 
 ```{r}
+#get desired information for each kegg id
 pathway_map = get_unlimited(na.omit(conv_list))
 ```
 
 ```{r}
+#previous step was long, so save output to disk so just in case something happens we don't have to do it again
 write.csv(pathway_map, "..\\data_analysis\\sw_kegg_pathway_map.csv")
 ```
 
