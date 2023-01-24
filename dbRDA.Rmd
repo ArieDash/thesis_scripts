@@ -1,0 +1,97 @@
+---
+title: "db-RDA"
+output: html_notebook
+params:
+  counts: "..\\data_analysis\\CB_red_filtered_counts.csv"
+  traits: "..\\data_analysis\\CB_traits.csv"
+  input_samples: "..\\data_analysis\\samples_red.csv"
+  regex: "CB"
+---
+
+```{r}
+library(vegan)
+```
+
+```{r}
+counts = read.csv(params$counts)
+#set rownames to geneids
+rownames(counts) = counts$X
+#remove column containing geneids
+counts = counts[,-1]
+#transpose data so that samples are rows
+counts = data.frame(t(counts))
+counts
+```
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples = samples[grep(params$regex, samples$Name), ]
+samples
+```
+
+
+```{r}
+traits = read.csv(params$traits)
+#select data that corresponds to desired samples
+traits = traits[traits$Name %in% samples$Name,]
+#set rownames to samples
+rownames(traits) = traits$Name
+#remove column containing geneids
+traits = traits[,-1]
+traits
+```
+
+```{r}
+#combine counts and trait data
+data = cbind(traits, counts)
+```
+
+```{r}
+conditions = data[,1:length(traits)]
+expr = data[,(length(traits)+1):length(data)]
+```
+
+
+```{r}
+#decide which distance measure to use. This examines rank correlations (spearman) between dissimilarity indices and gradient separation. Higher numbers are better
+rankindex(conditions, expr, indices = c("euc", "man", "gow", "bra","kul"), stepacross = FALSE, method = "spearman")
+```
+Use Gower's distance (it has the highest value and is godd or mixed categorical and continuous data).
+
+```{r}
+dbRDA = capscale(expr~Control+Relaxation+Upwelling+SMR+MMR+Aerobic_scope_abs+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
+dbRDA
+#if any condition variables don't show up in plot, it is because they were aliased and are linearly dependent on another variable
+plot(dbRDA)
+```
+
+```{r}
+#test for significance
+anova(dbRDA) #overall significance
+anova(dbRDA, by = "axis", perm.max = 500) #test axes for significance
+anova(dbRDA, by = "terms", permu = 200) #test for significant physiological variables
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
