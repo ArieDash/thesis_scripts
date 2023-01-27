@@ -6,11 +6,22 @@ params:
   traits: "..\\data_analysis\\CB_traits.csv"
   input_samples: "..\\data_analysis\\samples_red.csv"
   regex: "CB"
+  outfile: ""
 ---
 
 ```{r}
 library(vegan)
 ```
+
+```{r}
+#check to make sure output directories exist, create them if not
+out_dir = unlist(strsplit(params$outfile, "\\\\[^\\]*$"))[1]
+
+if(!dir.exists(out_dir)){
+  dir.create(out_dir)
+}
+```
+
 
 ```{r}
 counts = read.csv(params$counts)
@@ -48,7 +59,8 @@ data = cbind(traits, counts)
 ```
 
 ```{r}
-conditions = data[,1:length(traits)]
+#conditions = data[,1:length(traits)]
+conditions = data[,1:3]
 expr = data[,(length(traits)+1):length(data)]
 ```
 
@@ -60,19 +72,32 @@ rankindex(conditions, expr, indices = c("euc", "man", "gow", "bra","kul"), stepa
 Use Gower's distance (it has the highest value and is godd or mixed categorical and continuous data).
 
 ```{r}
-dbRDA = capscale(expr~Control+Relaxation+Upwelling+SMR+MMR+Aerobic_scope_abs+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
+#dbRDA = dbrda(expr~Control+Relaxation+Upwelling+SMR+MMR+Aerobic_scope_abs+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
+dbRDA = dbrda(expr~Control+Relaxation+Upwelling, conditions, dist = "gow", na.action = na.exclude)
 dbRDA
 #if any condition variables don't show up in plot, it is because they were aliased and are linearly dependent on another variable
+png(paste0(params$outfile, "_dbrda_plot.png"), width = 700)
 plot(dbRDA)
+dev.off
 ```
 
 ```{r}
 #test for significance
-anova(dbRDA) #overall significance
-anova(dbRDA, by = "axis", perm.max = 500) #test axes for significance
-anova(dbRDA, by = "terms", permu = 200) #test for significant physiological variables
-```
+adb = anova(dbRDA) #overall significance
 
+if(adb$`Pr(>F)`[1] <= 0.05){
+  f = paste0(params$outfile, "_sig.txt")
+}else{
+  f = paste0(params$outfile, ".txt")
+}
+cat("----OVERALL SIGNIFICANCE----\n", file = f)
+capture.output(adb, file = f, append = TRUE)
+cat("\n\n----AXES SIGNIFICANCE----\n", file = f, append = TRUE)
+capture.output(anova(dbRDA, by = "axis", perm.max = 500), file = f, append = TRUE) #test axes for significance
+cat("\n\n----PHYSIOLOGICAL VARIABLES SIGNIFICANCE----\n", file = f, append = TRUE)
+capture.output(anova(dbRDA, by = "terms", permu = 200), file = f, append = TRUE) #test for significant physiological variables
+
+```
 
 
 
