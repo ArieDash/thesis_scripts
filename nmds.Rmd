@@ -46,10 +46,11 @@ treat = c(rep("control", c_count), rep("relaxation", r_count), rep("upwelling", 
 
 png(paste0(params$image_out, "_nmds.png"), width = 900, height = 600)
 
-ordiplot(nmds, main = paste0(params$regex, " NMDS plot, stress = ", nmds$stress))
+ordiplot(nmds, type = "n", main = paste0(params$regex, " NMDS plot, stress = ", nmds$stress))
+points(nmds, display = "species", col = "grey")
 ordiellipse(nmds, groups = treat, draw = "polygon", col = "grey90", label = FALSE)
-orditorp(nmds, display = "sites", air = 0.01, cex = 0.9, col = c(rep("green", c_count), rep("purple", r_count), rep("blue", u_count)))
-#ordicluster(nmds, hclust(vegdist(counts, "bray")))
+orditorp(nmds, display = "sites", air = 0.01, cex = 0.9, col = c(rep("green", c_count), rep("blue", r_count), rep("red", u_count)))
+legend(x = "topright", legend = c("C", "R", "U"), fill = c("green", "blue", "red"), bty = "n", cex = 0.75)
 
 dev.off()
 ```
