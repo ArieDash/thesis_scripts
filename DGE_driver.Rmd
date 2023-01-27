@@ -419,6 +419,61 @@ for(type in types){
 }
 ```
 
+
+```{r}
+##NMDS driver chunk
+
+#may need to check box for Tools -> Global options -> Sweave -> LaTeX editing and compilation -> Use tinytex when compiling .tex files for this to work
+
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+#types = append(types, "corrected")
+
+#Regex of samples names we want to keep
+tissues = c()
+
+tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
+
+genome = "genome_"
+#genome = ""
+
+for(regex in tissues){
+  for(type in types){
+    counts = paste0("..\\data_analysis\\", genome, regex, "_", type, "_filtered_counts.csv")
+    
+    samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+    
+    image_out = paste0("..\\data_analysis\\images\\", genome, regex, "_", type, "\\", genome, regex, "_", type)
+
+    #render script in new R session to isolate it
+    xfun::Rscript_call(rmarkdown::render, list(input = "nmds.Rmd", params = list(counts = counts, samples = samples, regex = regex, image_out = image_out)))
+
+  }
+}
+
+```
+
+
+
 ```{r}
 ##dbRDA driver chunk
 
@@ -471,6 +526,7 @@ for(regex in tissues){
   }
 }
 ```
+
 
 
 

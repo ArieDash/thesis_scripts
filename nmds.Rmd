@@ -1,0 +1,57 @@
+---
+title: "nmds"
+output: html_notebook
+params:
+  counts: ""
+  samples: ""
+  regex: ""
+  image_out: ""
+---
+
+
+```{r}
+library(vegan)
+```
+
+```{r}
+counts = read.csv(params$counts)
+#set rownames to geneids
+rownames(counts) = counts$X
+#remove column containing geneids
+counts = counts[,-1]
+#transpose data so that samples are rows
+counts = data.frame(t(counts))
+counts
+```
+
+
+```{r}
+nmds = metaMDS(counts)
+plot(nmds)
+stressplot(nmds)
+nmds
+```
+
+```{r}
+samples = read.csv(params$samples)
+samples = samples[grep(params$regex, samples$Name), ]
+c_count = nrow(subset(samples, samples$Treatment == "C"))
+r_count = nrow(subset(samples, samples$Treatment == "R"))
+u_count = nrow(subset(samples, samples$Treatment == "U"))
+```
+
+
+```{r}
+treat = c(rep("control", c_count), rep("relaxation", r_count), rep("upwelling", u_count))
+
+png(paste0(params$image_out, "_nmds.png"), width = 900, height = 600)
+
+ordiplot(nmds, main = paste0(params$regex, " NMDS plot, stress = ", nmds$stress))
+ordiellipse(nmds, groups = treat, draw = "polygon", col = "grey90", label = FALSE)
+orditorp(nmds, display = "sites", air = 0.01, cex = 0.9, col = c(rep("green", c_count), rep("purple", r_count), rep("blue", u_count)))
+#ordicluster(nmds, hclust(vegdist(counts, "bray")))
+
+dev.off()
+```
+
+
