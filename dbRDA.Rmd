@@ -73,12 +73,12 @@ Use Gower's distance (it has the highest value and is godd or mixed categorical 
 
 ```{r}
 #dbRDA = dbrda(expr~Control+Relaxation+Upwelling+SMR+MMR+Aerobic_scope_abs+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
-dbRDA = dbrda(expr~Control+Relaxation+Upwelling, conditions, dist = "gow", na.action = na.exclude)
+dbRDA = dbrda(expr~Control+Upwelling+Relaxation, conditions, dist = "gow", na.action = na.exclude)
 dbRDA
 #if any condition variables don't show up in plot, it is because they were aliased and are linearly dependent on another variable
-png(paste0(params$outfile, "_dbrda_plot.png"), width = 700)
+#png(paste0(params$outfile, "_dbrda_plot.png"), width = 700)
 plot(dbRDA)
-dev.off
+#dev.off
 ```
 
 ```{r}
