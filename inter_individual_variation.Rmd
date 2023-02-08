@@ -1,0 +1,223 @@
+---
+title: "Inter-individual variation"
+output: html_notebook
+params:
+  kegg_info: ""
+  counts: ""
+  samples: ""
+  regex: "CB"
+  base_out: "..\\data_analysis\\MAD\\CB_red_"
+  
+---
+
+```{r}
+library(tidyr)
+library(tidyverse)
+library(vegan)
+library(ggplot2)
+```
+
+
+```{r}
+#check to make sure output directory exists, create it if not
+
+#match \\ (escaped), then match anything other than a \ (escaped) until the end of the string
+base_dir = unlist(strsplit(params$base_out, "\\\\[^\\]*$"))
+
+if(!dir.exists(base_dir)){
+  dir.create(base_dir)
+}
+```
+
+
+```{r}
+kegg = drop_na(read.csv(params$kegg_info)[,c(2,15:17)], path_desc)
+counts = read.csv(params$counts)
+samples = read.csv(params$samples)
+```
+
+```{r}
+samples = subset(samples, grepl(params$regex, samples$Name))
+```
+
+
+```{r}
+#extract out genes in specific KEGG pathways
+glyc = subset(kegg, grepl("Glycolysis", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+tca = subset(kegg, grepl("TCA", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+apop = subset(kegg, grepl("Apoptosis", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+prot = subset(kegg, grepl("Proteasome", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+ump = subset(kegg, grepl("Ubiquitin", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+mapk = subset(kegg, grepl("MAP", kegg$path_desc)) %>% distinct(accession_id, .keep_all = TRUE)
+```
+
+```{r}
+pre_map = data.frame(pathway = c("Glycogen", "Tricarboxylic Acid (TCA) Cycle", "Apoptosis", "Proteasome", "Ubiquitin-mediated Proteolysis", "Mitogen-activated protein (MAP)-kinase signalling"), genes = c(nrow(glyc), nrow(tca), nrow(apop), nrow(prot), nrow(ump), nrow(mapk)))
+```
+
+```{r}
+#write out total genes in reference number
+#This will be the same for each reference so no need to specify regex
+base = unlist(strsplit(params$base_out, params$regex))[1]
+write.csv(pre_map, paste0(base, "total_genes_per_pathway.csv"))
+```
+
+
+```{r}
+#total number of genes in reference in each pathway
+print(paste0("Number of genes in Glycogen pathway: ", nrow(glyc)))
+print(paste0("Number of genes in Tricarboxylic Acid (TCA) Cycle pathway: ", nrow(tca)))
+print(paste0("Number of genes in Apoptosis pathway: ", nrow(apop)))
+print(paste0("Number of genes in Proteasome pathway: ", nrow(prot)))
+print(paste0("Number of genes in Ubiquitin-mediated Proteolysis pathway: ", nrow(ump)))
+print(paste0("Number of genes in Mitogen-activated protein (MAP)-kinase signalling pathway: ", nrow(mapk)))
+```
+
+
+```{r}
+#map expression data onto pathways
+glyc = merge(glyc, counts, by.x = "accession_id", by.y = "X")
+tca = merge(tca, counts, by.x = "accession_id", by.y = "X")
+apop = merge(apop, counts, by.x = "accession_id", by.y = "X")
+prot = merge(prot, counts, by.x = "accession_id", by.y = "X")
+ump = merge(ump, counts, by.x = "accession_id", by.y = "X")
+mapk = merge(mapk, counts, by.x = "accession_id", by.y = "X")
+```
+
+
+```{r}
+#total number of genes expressed in samples in each pathway
+print(paste0("Number of genes in Glycogen pathway: ", nrow(glyc)))
+print(paste0("Number of genes in Tricarboxylic Acid (TCA) Cycle pathway: ", nrow(tca)))
+print(paste0("Number of genes in Apoptosis pathway: ", nrow(apop)))
+print(paste0("Number of genes in Proteasome pathway: ", nrow(prot)))
+print(paste0("Number of genes in Ubiquitin-mediated Proteolysis pathway: ", nrow(ump)))
+print(paste0("Number of genes in Mitogen-activated protein (MAP)-kinase signalling pathway: ", nrow(mapk)))
+```
+
+```{r}
+post_map = data.frame(pathway = c("Glycogen", "Tricarboxylic Acid (TCA) Cycle", "Apoptosis", "Proteasome", "Ubiquitin-mediated Proteolysis", "Mitogen-activated protein (MAP)-kinase signalling"), genes = c(nrow(glyc), nrow(tca), nrow(apop), nrow(prot), nrow(ump), nrow(mapk)))
+```
+
+```{r}
+#write out number of genes in each pathway after mapping genes that were expressed in that tissue onto the total
+write.csv(post_map, paste0(params$base_out, "genes_per_pathway.csv"))
+```
+
+
+```{r}
+#pathways = list(glyc, tca, apop, prot, ump, mapk)
+#names(pathways) = c("glyc", "tca", "apop", "prot", "ump", "mapk")
+```
+
+```{r}
+#combine all kegg matrices together
+pathways = rbind(glyc, tca, apop, prot, ump, mapk)
+```
+
+
+Treatment-specific analyses of interindividual variation
+
+```{r}
+filter_df = function(df, samp){
+  #select only those columns corresponding expression data
+  ret = df[samp]
+  #calculate expression variance for each gene
+  ret_var = apply(ret, 1, var)
+  #find the variances that are equal to 0
+  drop = which(ret_var == 0)
+  #assign row names
+  rownames(ret) = df$accession_id
+  #remove rows with 0 variance
+  ret = filter(ret, !row_number() %in% drop)
+  #return transposed version of df for future computations
+  return(data.frame(t(ret)))
+}
+```
+
+
+```{r}
+#do some data wrangling and remove genes with zero variance
+#ptg = lapply(pathways, filter_df, samples$Name)
+```
+
+```{r}
+#do some data wrangling and remove genes with zero variance
+ptg = filter_df(pathways, samples$Name)
+```
+
+
+```{r}
+#group = factor(c(rep(1,nrow(subset(samples, samples$Treatment == "C"))), rep(2,nrow(subset(samples, samples$Treatment == "R"))), rep(3,nrow(subset(samples, samples$Treatment == "U")))), labels = c("C","R", "U"))
+
+
+
+#calculate Euclidean distance matrix for each pathway
+#dists = lapply(ptg, dist, method = "euclidean")
+#disps = lapply(dists, betadisper, group = group, type = "median")
+```
+
+```{r}
+group = factor(c(rep(1,nrow(subset(samples, samples$Treatment == "C"))), rep(2,nrow(subset(samples, samples$Treatment == "R"))), rep(3,nrow(subset(samples, samples$Treatment == "U")))), labels = c("C","R", "U"))
+
+
+
+#calculate Euclidean distance matrix for each pathway
+dists = dist(ptg, method = "euclidean")
+disps = betadisper(dists, group = group, type = "median")
+distance_df = data.frame(distance = disps$distance, treatment = samples$Treatment)
+```
+
+```{r}
+#write out distance_df
+write.csv(distance_df, paste0(params$base_out, "samples_MAD.csv"))
+```
+
+
+```{r}
+MAD = data.frame(tapply(distance_df$distance, group, FUN = function(x){median(abs(x))}))
+names(MAD) = "MAD"
+MAD
+```
+
+```{r}
+an_disps = anova(disps)
+pairwise = permutest(disps, pairwise = TRUE, permutations = 9999)
+```
+
+
+```{r}
+if(an_disps$`Pr(>F)`[1] <= 0.05 || pairwise$tab$`Pr(>F)`[1] <= 0.05){
+  f = paste0(params$base_out, "MAD_tests_sig.txt")
+}else{
+  f = paste0(params$base_out, "MAD_tests.txt")
+}
+cat("----ANOVA----\n", file = f)
+capture.output(an_disps, file = f, append = TRUE)
+cat("\n\n----Pairwise tests----\n", file = f, append = TRUE)
+capture.output(pairwise, file = f, append = TRUE)
+```
+
+
+```{r}
+MAD_distance = data.frame(treatment = group, deviation = c(abs(subset(distance_df, distance_df$treatment == "C")$distance), abs(subset(distance_df, distance_df$treatment == "R")$distance), abs(subset(distance_df, distance_df$treatment == "U")$distance)))
+MAD_distance
+```
+
+
+```{r}
+ggplot(MAD_distance, aes(x = treatment, y = deviation, fill = treatment)) + geom_boxplot() + ggtitle(paste0("MAD dispersion by treatment for ", params$regex)) +scale_fill_manual(breaks = MAD_distance$treatment, values = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289"))
+ggsave(paste0(params$base_out, "MAD_graph.png"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
