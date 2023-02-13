@@ -3,11 +3,11 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  input_counts: "..\\data_analysis\\genome_CG_red_filtered_counts.csv"
+  input_counts: "..\\data_analysis\\genome_CM_red_filtered_counts.csv"
   input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CG"
+  regex: "CM"
   genome: "genome_"
-  traits: "..\\data_analysis\\CG_traits.csv"
+  traits: "..\\data_analysis\\CM_traits.csv"
   sw: "..\\annotation\\sw_genome_gene_info.csv"
 ---
 
@@ -378,7 +378,7 @@ get_top_n = function(mod_color, df, max_n){
 ```
 
 ```{r}
-write.csv(geneInfo, paste0("..\\data_analysis\\", "WGCNA_output\\", params$gneome, params$regex, "_module_info.csv"))
+write.csv(geneInfo, paste0("..\\data_analysis\\", "WGCNA_output\\", params$genome, params$regex, "_module_info.csv"))
 
 
 for(module in unique(sigGeneInfo$moduleColor)){
