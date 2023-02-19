@@ -250,6 +250,8 @@ moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 
 ```{r}
 write.csv(moduleTraitPvalue, paste0("..\\data_analysis\\", "WGCNA_output\\", params$genome, params$regex, "_module_trait_info.csv"))
+
+write.csv(moduleTraitCor, paste0("..\\data_analysis\\", "WGCNA_output\\", params$genome, params$regex, "_module_trait_cor.csv"))
 ```
 
 
@@ -365,7 +367,7 @@ sigGeneInfo = subset(geneInfo, paste0("ME", geneInfo$moduleColor) %in% rownames(
 
 
 ```{r}
-fix(geneInfo)
+#fix(geneInfo)
 ```
 
 ```{r}
