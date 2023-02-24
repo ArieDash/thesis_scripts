@@ -300,7 +300,7 @@ CC_sig_terms = subset(go, go$ontology == "CC")
 ```{r}
 if(nrow(MF_sig_terms) > 0){
  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
-  #write our sig list
+  #write out sig list
   write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
 }
 ```

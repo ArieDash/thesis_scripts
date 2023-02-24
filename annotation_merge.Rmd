@@ -107,6 +107,20 @@ https://www.ncbi.nlm.nih.gov/protein/TNN81439.1
 write.csv(pref_sp, "..\\annotation\\gene_trans_map.csv")
 ```
 
+```{r}
+#input genome swissprot data
+sp = read.csv("..\\annotation\\meta_swissprot_unique.tsv", sep = "\t", header = FALSE)
+sp = sp[,c(1,2)]
+colnames(sp) = c("transcript_name", "gene_name")
+sp$gene_name = sapply(strsplit(sp$gene_name, ".", fixed = TRUE), function(x) x[1])
+sp$origin = "swissprot"
+```
+
+```{r}
+#write gene_trans_map to file
+write.csv(sp, "..\\annotation\\gene_trans_map.csv")
+```
+
 
 ```{r}
 #input genome swissprot data

@@ -201,7 +201,7 @@ if(params$genome != ""){
   }
 }else{
   if(params$regex == "CB"){
-    spower = 9
+    spower = 8
   }else if(params$regex == "CG"){
     spower = 9
   }else if(params$regex == "CL"){

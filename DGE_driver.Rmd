@@ -34,8 +34,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-genome = TRUE
-#genome = FALSE
+#genome = TRUE
+genome = FALSE
 
 #install tximport?
 install = 0
@@ -117,8 +117,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-genome = "genome_"
-#genome = ""
+#genome = "genome_"
+genome = ""
 
 #if we want to install the package. Set to 1 to install
 install = 0
@@ -141,7 +141,7 @@ for(regex in tissues){
 
     #path to and name of output report file
     #if it errors, try using just the file name output and moving it where you want afterwards. I was having some issues getting this to work when it had to write the pdf to a different directory than the .Rmd file, although it wrote the .tex file to the location just fine
-    report_output = paste0(regex, "_", type, "_LRT.pdf")
+    report_output = paste0(genome, regex, "_", type, "_LRT.pdf")
 
     #render script in new R session to isolate it
     xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, counts_out = counts_out, deg_out = deg_out, image_out = image_out), output_file = report_output, output_format = 'pdf_document'))
@@ -206,7 +206,7 @@ p = 0.05
 #log-fold change cutoff of DEG list
 lfc = 1
 
-genome = "genome_"
+#genome = "genome_"
 
 for(treatment in treatments){
   for(direction in directions){
@@ -253,8 +253,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-genome = "genome_"
-#genome = ""
+#genome = "genome_"
+genome = ""
 
 p = 0.05
 c = 1
@@ -327,8 +327,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-genome = "genome_"
-#genome = ""
+#genome = "genome_"
+genome = ""
 
 p = 0.05
 c = 1
@@ -402,9 +402,9 @@ types = append(types, "red")
 tissues = c()
 
 tissues = append(tissues, "CB")
-tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CG")
+#tissues = append(tissues, "CM")
+#tissues = append(tissues, "CL")
 
 #genome = "genome_"
 genome = ""
