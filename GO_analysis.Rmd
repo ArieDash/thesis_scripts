@@ -12,6 +12,8 @@ params:
 ---
 
 ```{r}
+library(ggplot2)
+library(tidyr)
 library(goseq)
 library(lessR)
 library(GO.db)
@@ -133,6 +135,20 @@ go_terms
 ```
 
 ```{r}
+gen_intercept = function(df){
+  over = which(BP_sig_terms$over_represented_pvalue > 0.05)
+  if(length(over) > 0){
+    index = nrow(df) - over[1] + 1.5
+  }
+  else{
+    index = 0.5
+  }
+  return(index)
+}
+```
+
+
+```{r}
 #KEGG terms
 if(params$kegg){
   #read in annotation info
@@ -152,11 +168,18 @@ if(params$kegg){
     #save sig list
     write.csv(go_kegg, paste0(params$listout, "sig_KEGG_list.csv"))
     
-    #create figure
-    PieChart(x = category, y = numDEInCat, hole = 0, values = "%", data = go_kegg, main = "KEGG pathway composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_KEGG.pdf"), width = 12.5)
+    go_kegg_pivot = pivot_longer(go_kegg, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
+    go_kegg_pivot$type = factor(go_kegg_pivot$type, levels = c("numInCat", "numDEInCat"))
+    go_kegg_pivot$category = factor(go_kegg_pivot$category, levels = go_kegg$category)
+
+    ggplot(data = go_kegg_pivot, aes(x = forcats::fct_rev(category), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("KEGG pathway composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("KEGG category") + geom_vline(xintercept = gen_intercept(go_kegg))
+
+  ggsave(paste0(params$baseout, "sig_KEGG.png"), width = 8, height = 11, units = "in")
   }
 }
 ```
+
+
 
 ```{r}
 #GO composition DE list
@@ -288,7 +311,6 @@ if(nrow(MF_all_terms) > 0){
 }
 ```
 
-
 ```{r}
 #GO composition significantly enriched DE list
 MF_sig_terms = subset(go, go$ontology == "MF")
@@ -299,7 +321,14 @@ CC_sig_terms = subset(go, go$ontology == "CC")
 
 ```{r}
 if(nrow(MF_sig_terms) > 0){
- PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = MF_sig_terms, main = "Molecular Function GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_MF.pdf"), width = 12.5) 
+  MF_sig_pivot = pivot_longer(MF_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
+  MF_sig_pivot$type = factor(MF_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
+  MF_sig_pivot$term = factor(MF_sig_pivot$term, levels = MF_sig_terms$term)
+  ggplot(data = MF_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Molecular Function GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(MF_sig_terms))
+
+
+  ggsave(paste0(params$baseout, "sig_MF.png"), width = 8, height = 11, units = "in")
+  
   #write out sig list
   write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
 }
@@ -318,9 +347,16 @@ if(nrow(BP_all_terms) > 0){
 ```
 
 
+
 ```{r}
 if(nrow(BP_sig_terms) > 0){
-  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = BP_sig_terms, main = "Biological Process GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_BP.pdf"), width = 12.5)
+  BP_sig_pivot = pivot_longer(BP_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
+  BP_sig_pivot$type = factor(BP_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
+  BP_sig_pivot$term = factor(BP_sig_pivot$term, levels = BP_sig_terms$term)
+  ggplot(data = BP_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Biological Process GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(BP_sig_terms))
+
+  ggsave(paste0(params$baseout, "sig_BP.png"), width = 8, height = 11, units = "in")
+  
   write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
 }
 ```
@@ -340,7 +376,14 @@ if(nrow(CC_all_terms) > 0){
 
 ```{r}
 if(nrow(CC_sig_terms) > 0){
-  PieChart(x = term, y = numDEInCat, hole = 0, values = "%", data = CC_sig_terms, main = "Cellular Component GO composition of significantly enriched DE list", pdf_file = paste0(params$baseout, "sig_CC.pdf"), width = 12.5)
+  CC_sig_pivot = pivot_longer(CC_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
+  CC_sig_pivot$type = factor(CC_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
+  CC_sig_pivot$term = factor(CC_sig_pivot$term, levels = CC_sig_terms$term)
+  ggplot(data = CC_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Cellular Component GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(CC_sig_terms))
+
+
+  ggsave(paste0(params$baseout, "sig_CC.png"), width = 8, height = 11, units = "in")
+  
   write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 }
 ```

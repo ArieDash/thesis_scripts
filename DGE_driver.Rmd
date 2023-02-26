@@ -460,10 +460,10 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#genome = ""
-#genome_inc = 0
-genome = "genome_"
-genome_inc = 1
+genome = ""
+genome_inc = 0
+#genome = "genome_"
+#genome_inc = 1
 
 for(type in types){
   for(tissue in tissues){
@@ -521,10 +521,10 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#genome = ""
-#genome_inc = 0
-genome = "genome_"
-genome_inc = 1
+genome = ""
+genome_inc = 0
+#genome = "genome_"
+#genome_inc = 1
 
 for(type in types){
   for(tissue in tissues){
