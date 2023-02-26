@@ -136,7 +136,7 @@ go_terms
 
 ```{r}
 gen_intercept = function(df){
-  over = which(BP_sig_terms$over_represented_pvalue > 0.05)
+  over = which(df$over_represented_pvalue > 0.05)
   if(length(over) > 0){
     index = nrow(df) - over[1] + 1.5
   }
