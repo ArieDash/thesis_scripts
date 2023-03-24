@@ -117,8 +117,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#genome = "genome_"
-genome = ""
+genome = "genome_"
+#genome = ""
 
 #if we want to install the package. Set to 1 to install
 install = 0
@@ -206,7 +206,8 @@ p = 0.05
 #log-fold change cutoff of DEG list
 lfc = 1
 
-#genome = "genome_"
+#genome = ""
+genome = "genome_"
 
 for(treatment in treatments){
   for(direction in directions){
@@ -215,7 +216,6 @@ for(treatment in treatments){
       for(regex in tissues){
         input_degs = append(input_degs, paste0("..\\data_analysis\\DE_lists\\",genome, regex, "_", type, "_", treatment, "_P", p, "C", lfc, "_", direction, ".csv"))
       }
-      print(input_degs)
       image_out = paste0("..\\data_analysis\\images\\", treatment, "\\", genome, treatment, "_", type, "_", direction, "_")
       #render script in new R session to isolate it
     xfun::Rscript_call(rmarkdown::render, list(input = "within_treatment_analysis.Rmd", params = list(labels = tissues, input_degs = input_degs, image_out = image_out)))
@@ -327,8 +327,8 @@ tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#genome = "genome_"
-genome = ""
+genome = "genome_"
+#genome = ""
 
 p = 0.05
 c = 1
@@ -336,8 +336,8 @@ c = 1
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "UvsC")
-comparisons = append(comparisons, "RvsC")
+#comparisons = append(comparisons, "UvsC")
+#comparisons = append(comparisons, "RvsC")
 comparisons = append(comparisons, "UvsR")
 
 directions = c()

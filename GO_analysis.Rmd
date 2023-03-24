@@ -167,12 +167,10 @@ if(params$kegg){
   if(nrow(go_kegg) > 0){
     #save sig list
     write.csv(go_kegg, paste0(params$listout, "sig_KEGG_list.csv"))
-    
-    go_kegg_pivot = pivot_longer(go_kegg, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
-    go_kegg_pivot$type = factor(go_kegg_pivot$type, levels = c("numInCat", "numDEInCat"))
-    go_kegg_pivot$category = factor(go_kegg_pivot$category, levels = go_kegg$category)
+    go_kegg$percent = go_kegg$numDEInCat/length(degs$gene_name)
+    go_kegg$category = factor(go_kegg$category, levels = go_kegg$category)
 
-    ggplot(data = go_kegg_pivot, aes(x = forcats::fct_rev(category), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("KEGG pathway composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("KEGG category") + geom_vline(xintercept = gen_intercept(go_kegg))
+    ggplot(data = go_kegg, aes(x = forcats::fct_rev(category), y = percent)) + geom_bar(stat = "identity") + ggtitle("KEGG pathway composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Percent") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("KEGG category") + geom_vline(xintercept = gen_intercept(go_kegg)) + scale_y_continuous(labels = scales::percent)
 
   ggsave(paste0(params$baseout, "sig_KEGG.png"), width = 8, height = 11, units = "in")
   }
@@ -321,10 +319,10 @@ CC_sig_terms = subset(go, go$ontology == "CC")
 
 ```{r}
 if(nrow(MF_sig_terms) > 0){
-  MF_sig_pivot = pivot_longer(MF_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
-  MF_sig_pivot$type = factor(MF_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
-  MF_sig_pivot$term = factor(MF_sig_pivot$term, levels = MF_sig_terms$term)
-  ggplot(data = MF_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Molecular Function GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(MF_sig_terms))
+  
+  MF_sig_terms$percent = MF_sig_terms$numDEInCat/length(degs$gene_name)
+  MF_sig_terms$term = factor(MF_sig_terms$term, levels = MF_sig_terms$term)
+  ggplot(data = MF_sig_terms, aes(x = forcats::fct_rev(term), y = percent)) + geom_bar(stat = "identity") + ggtitle("Molecular Function GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Percent") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(MF_sig_terms)) + scale_y_continuous(labels = scales::percent)
 
 
   ggsave(paste0(params$baseout, "sig_MF.png"), width = 8, height = 11, units = "in")
@@ -350,10 +348,10 @@ if(nrow(BP_all_terms) > 0){
 
 ```{r}
 if(nrow(BP_sig_terms) > 0){
-  BP_sig_pivot = pivot_longer(BP_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
-  BP_sig_pivot$type = factor(BP_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
-  BP_sig_pivot$term = factor(BP_sig_pivot$term, levels = BP_sig_terms$term)
-  ggplot(data = BP_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Biological Process GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(BP_sig_terms))
+  
+  BP_sig_terms$percent = BP_sig_terms$numDEInCat/length(degs$gene_name)
+  BP_sig_terms$term = factor(BP_sig_terms$term, levels = BP_sig_terms$term)
+  ggplot(data = BP_sig_terms, aes(x = forcats::fct_rev(term), y = percent)) + geom_bar(stat = "identity") + ggtitle("Biological Process GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Percent") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(BP_sig_terms)) + scale_y_continuous(labels = scales::percent)
 
   ggsave(paste0(params$baseout, "sig_BP.png"), width = 8, height = 11, units = "in")
   
@@ -376,10 +374,10 @@ if(nrow(CC_all_terms) > 0){
 
 ```{r}
 if(nrow(CC_sig_terms) > 0){
-  CC_sig_pivot = pivot_longer(CC_sig_terms, names_to = 'type', values_to = 'numDE', cols = c('numInCat', 'numDEInCat'))
-  CC_sig_pivot$type = factor(CC_sig_pivot$type, levels = c("numInCat", "numDEInCat"))
-  CC_sig_pivot$term = factor(CC_sig_pivot$term, levels = CC_sig_terms$term)
-  ggplot(data = CC_sig_pivot, aes(x = forcats::fct_rev(term), y = numDE)) + geom_bar(aes(fill = type), position = "dodge", stat = "identity") + ggtitle("Cellular Component GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Number of genes") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(CC_sig_terms))
+  
+  CC_sig_terms$percent = CC_sig_terms$numDEInCat/length(degs$gene_name)
+  CC_sig_terms$term = factor(CC_sig_terms$term, levels = CC_sig_terms$term)
+  ggplot(data = CC_sig_terms, aes(x = forcats::fct_rev(term), y = percent)) + geom_bar(stat = "identity") + ggtitle("Cellular Component GO composition") + theme(axis.text.x = element_text(angle = 0, hjust=1)) + ylab("Percent") + scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 30)) + coord_flip() + xlab("GO term") + geom_vline(xintercept = gen_intercept(CC_sig_terms)) + scale_y_continuous(labels = scales::percent)
 
 
   ggsave(paste0(params$baseout, "sig_CC.png"), width = 8, height = 11, units = "in")
