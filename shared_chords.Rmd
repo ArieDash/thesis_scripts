@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+params:
+  module_1_info : "C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\WGCNA_output\\genome_CM_module_info.csv"
+  module_2_info : "C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\WGCNA_output\\CG_module_info.csv"
+  base_out : "C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\"
+  regex_1 : "genome_CM"
+  regex_2 : "CG"
+---
+
+```{r}
+library(circlize)
+```
+
+
+```{r}
+t1 = read.csv(params$module_1_info)
+t2 = read.csv(params$module_2_info)
+```
+
+
+```{r}
+data_out  = data.frame()
+total_list = data.frame()
+print(total_list)
+for(m1 in unique(t1$moduleColor)){
+  for(m2 in unique(t2$moduleColor)){
+    sub1 = t1[t1$moduleColor == m1,]
+    sub2 = t2[t2$moduleColor == m2,]
+    shared = intersect(sub1$transcript_name, sub2$transcript_name)
+    if(length(shared)/nrow(sub1) > 0.2 || length(shared)/nrow(sub2) > 0.2){
+      temp = data.frame(transcript_name = shared)
+      row.names(temp) = shared
+      write.csv(temp, paste0(params$base_out, "WGCNA_output\\overlap_comparison\\", params$regex_1, "_", m1, "_", params$regex_2, "_", m2, "_shared.csv"))
+      data_out = rbind(data_out, data.frame(m1 = m1, m2 = m2, numShared = length(shared), percentM1 = length(shared)/nrow(sub1), precentM2 = length(shared)/nrow(sub2), lenM1 = nrow(sub1), lenM2 = nrow(sub2)))
+      total_list = rbind(total_list, data.frame(m1 = rep(m1, length(shared)), m2 = rep(m2, length(shared)), gene_name = shared))
+    }
+  }
+}
+write.csv(total_list, paste0(params$base_out, "WGCNA_output\\overlap_comparison\\aggregate_lists\\", params$regex_1, "_", params$regex_2, "_total_shared.csv"))
+
+write.csv(data_out, paste0(params$base_out, params$regex_1, "_", params$regex_2, "_WGCNA_module_comparison.csv"))
+```
+
+
+```{r}
+#R developers forgot to implement an exit() function
+if(length(total_list) > 0){
+  lengths = length(unique(data_out$m1)) + length(unique(data_out$m2))
+  names1 = paste0(params$regex_1, "_", unique(data_out$m1))
+  names2 = paste0(params$regex_2, "_", unique(data_out$m2))
+  names_tot = c(names1, names2)
+  temp = matrix(0, nrow = lengths, ncol = lengths)
+  row.names(temp) = names_tot
+  colnames(temp) = names_tot
+  
+  for(i in seq_len(nrow(data_out))){
+    temp[paste0(params$regex_1, "_", data_out[i,1]), paste0(params$regex_2, "_", data_out[i,2])] = data_out[i,3]
+  }
+  
+  unmapped_1 = apply(temp, 1, sum)
+  unmapped_2 = apply(temp, 2, sum)
+  #remove zeroes
+  unmapped_1 = unmapped_1[1:length(names1)]
+  unmapped_2 = unmapped_2[-c(1:length(names1))]
+  
+  #divide by two because the unmapped genes chords start and end in the same segment, so they are essentially double-counted
+  unmapped_1 = (unique(data_out[,6]) - unmapped_1)/2
+  unmapped_2 = (unique(data_out[,7]) - unmapped_2)/2
+  names(unmapped_1) = names1
+  names(unmapped_2) = names2
+  
+  cols = rand_color(nrow(temp)*ncol(temp))
+  dim(cols) = dim(temp)
+  dimnames(cols) = dimnames(temp)
+  
+  
+  for(i in seq_len(length(unmapped_1))){
+    temp[names(unmapped_1)[i], names(unmapped_1)[i]] = unmapped_1[i]
+    cols[names(unmapped_1)[i], names(unmapped_1)[i]] = "#FFFFFF00"
+  }
+  
+  for(i in seq_len(length(unmapped_2))){
+    temp[names(unmapped_2)[i], names(unmapped_2)[i]] = unmapped_2[i]
+    cols[names(unmapped_2)[i], names(unmapped_2)[i]] = "#FFFFFF00"
+  }
+}
+```
+
+
+```{r}
+image_dir = unlist(strsplit(paste0(params$base_out, "\\images\\WGCNA\\overlap\\", params$regex_1, "_", params$regex_2, "\\"), "\\\\[^\\]*$"))
+
+if(!dir.exists(image_dir)){
+  dir.create(image_dir)
+}
+```
+
+
+```{r}
+if(length(total_list) > 0){
+  #https://stackoverflow.com/questions/30432224/r-circlize-chord-graph-with-empty-sectors
+  circos.clear()
+  #increase size of canvas
+  circos.par(canvas.xlim=c(-1,1),canvas.ylim=c(-1,1))
+  
+  png(paste0(image_dir, "\\", params$regex_1, "_", params$regex_2, "_chord_diagram.png"), width = 700, height = 700, units = "px", res = 120)
+  
+  chordDiagram(temp, col = cols)
+  
+  dev.off()
+}
+```
+
+
+```{r}
+if(length(total_list) > 0){
+  circos.clear()
+  #increase size of canvas
+  circos.par(canvas.xlim=c(-1.5,1.5),canvas.ylim=c(-1.5,1.5))
+  
+  chordDiagram(temp, annotationTrack = "grid", preAllocateTracks = 1)
+  #rotate the labels
+  circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
+    xlim = get.cell.meta.data("xlim")
+    ylim = get.cell.meta.data("ylim")
+    sector.name = get.cell.meta.data("sector.index")
+    circos.text(mean(xlim), ylim[1] + 0.7, sector.name, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5), cex = 0.6)
+    circos.axis(h = "top", labels.cex = 0.5, major.tick.length = 0.2, sector.index = sector.name, track.index = 2)
+  }, bg.border = NA)
+}
+```
+
+
+
+

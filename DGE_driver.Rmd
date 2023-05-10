@@ -24,18 +24,20 @@ types = c()
 #types = append(types, "all")
 #types = append(types, "no_batch")
 #types = append(types, "batch")
-types = append(types, "red")
+#types = append(types, "red")
+types = append(types, "class")
+#types = append(types, "ONT")
 
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
-tissues = append(tissues, "CG")
+#tissues = append(tissues, "CB")
+#tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CL")
 
-#genome = TRUE
-genome = FALSE
+genome = TRUE
+#genome = FALSE
 
 #install tximport?
 install = 0
@@ -49,7 +51,7 @@ for(regex in tissues){
       out = paste0("..\\data_analysis\\genome_", regex, "_", type, "_txi.csv")
       
       samples_location = "..\\mapping\\genome"
-      
+      #samples_location = "..\\data_transfer\\MS430"
       #location of gene_trans_map
       gtm = "..\\annotation\\genome_gene_trans_map.csv"
       
@@ -108,7 +110,9 @@ types = c()
 #types = append(types, "batch")
 types = append(types, "red")
 #types = append(types, "corrected")
-
+#types = append(types, "class")
+#types = append(types, "ONT") 
+ 
 #Regex of samples names we want to keep
 tissues = c()
 
@@ -122,6 +126,8 @@ genome = "genome_"
 
 #if we want to install the package. Set to 1 to install
 install = 0
+
+base_out = "..\\data_analysis\\"
 
 for(regex in tissues){
   for(type in types){
@@ -144,7 +150,7 @@ for(regex in tissues){
     report_output = paste0(genome, regex, "_", type, "_LRT.pdf")
 
     #render script in new R session to isolate it
-    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, counts_out = counts_out, deg_out = deg_out, image_out = image_out), output_file = report_output, output_format = 'pdf_document'))
+    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, counts_out = counts_out, deg_out = deg_out, image_out = image_out, base_out = base_out), output_file = report_output, output_format = 'pdf_document'))
   
     #we only want to install on the first iteration, so set install to 0 now
     install = 0
@@ -336,8 +342,8 @@ c = 1
 #treatment contrasts to analyze
 comparisons = c()
 
-#comparisons = append(comparisons, "UvsC")
-#comparisons = append(comparisons, "RvsC")
+comparisons = append(comparisons, "UvsC")
+comparisons = append(comparisons, "RvsC")
 comparisons = append(comparisons, "UvsR")
 
 directions = c()
@@ -373,6 +379,82 @@ for(type in types){
 
 
 ```{r}
+#DGE overlap KEGG analysis chunk
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues = c()
+
+tissues = append(tissues, "CB")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "CM")
+tissues = append(tissues, "CL")
+
+#genome = "genome_"
+genome = ""
+
+p = 0.05
+c = 1
+
+#treatment contrasts to analyze
+comparisons = c()
+
+comparisons = append(comparisons, "UvsC")
+comparisons = append(comparisons, "RvsC")
+comparisons = append(comparisons, "UvsR")
+
+for(type in types){
+  for(tissue in tissues){
+    for(i in seq_len(length(comparisons)-1)){
+      j = i+1
+      while(j <= length(comparisons)){
+        comp1 = comparisons[i]
+        comp2 = comparisons[j]
+       de = paste0("..\\data_analysis\\DE_lists\\", genome, tissue, "_", type, "_P", p, "C", c, "_", comp1, "_", comp2, "_shared.csv") 
+
+       counts = paste0("..\\data_analysis\\", genome, tissue, "_", type, "_txi.csv")
+       
+       baseout = paste0("..\\data_analysis\\images\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", comp1, "_", comp2, "_")
+       
+       listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_P", p, "C", c, "_", comp1, "_", comp2, "_")
+       
+       gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
+       
+       info = paste0("..\\annotation\\sw_", genome, "kegg_info.csv")
+       
+       if(file.exists(de)){
+         xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout, gtm = gtm, info = info, kegg = 1)))
+       }
+       
+       j = j+1
+      }
+    }
+  }
+}
+
+
+```
+
+
+
+```{r}
 #WGCNA driver chunk
 
 
@@ -401,13 +483,13 @@ types = append(types, "red")
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
+#tissues = append(tissues, "CB")
 #tissues = append(tissues, "CG")
-#tissues = append(tissues, "CM")
+tissues = append(tissues, "CM")
 #tissues = append(tissues, "CL")
 
-#genome = "genome_"
-genome = ""
+genome = "genome_"
+#genome = ""
 
 sw = paste0("..\\annotation\\sw_", genome, "gene_info.csv") 
 
@@ -516,15 +598,15 @@ types = append(types, "red")
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
+#tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
+#tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-genome = ""
-genome_inc = 0
-#genome = "genome_"
-#genome_inc = 1
+#genome = ""
+#genome_inc = 0
+genome = "genome_"
+genome_inc = 1
 
 for(type in types){
   for(tissue in tissues){
@@ -657,6 +739,141 @@ for(regex in tissues){
   }
 }
 ```
+
+
+```{r}
+#WGCNA overlap analysis chunk
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues_1 = c()
+
+#tissues_1 = append(tissues_1, "CB")
+#tissues_1 = append(tissues_1, "CG")
+#tissues_1 = append(tissues_1, "CM")
+#tissues_1 = append(tissues_1, "CL")
+tissues_1 = append(tissues_1, "genome_CB")
+#tissues_1 = append(tissues_1, "genome_CG")
+#tissues_1 = append(tissues_1, "genome_CM")
+#tissues_1 = append(tissues_1, "genome_CL")
+
+tissues_2 = c()
+
+#tissues_2 = append(tissues_2, "CB")
+#tissues_2 = append(tissues_2, "CG")
+#tissues_2 = append(tissues_2, "CM")
+#tissues_2 = append(tissues_2, "CL")
+#tissues_2 = append(tissues_2, "genome_CB")
+#tissues_2 = append(tissues_2, "genome_CG")
+tissues_2 = append(tissues_2, "genome_CM")
+#tissues_2 = append(tissues_2, "genome_CL")
+
+
+for(type in types){
+  for(tissue_1 in tissues_1){
+    for(tissue_2 in tissues_2){
+      module_1_info = paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\WGCNA_output\\", tissue_1, "_module_info.csv")
+      
+      module_2_info = paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\WGCNA_output\\", tissue_2, "_module_info.csv")
+        
+      base_out = "C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\"
+        
+        xfun::Rscript_call(rmarkdown::render, list(input = "shared_chords.Rmd", params = list(module_1_info = module_1_info, module_2_info = module_2_info, base_out = base_out, regex_1 = tissue_1, regex_2 = tissue_2)))
+    }
+  }
+}
+```
+
+
+```{r}
+#WGCNA overlap KEGG analysis chunk
+
+#set parameters for compilation
+
+#input data for run
+
+
+#types:
+#samples: all samples
+#no_batch: all samples except those with batch effects
+#batch: all C, U, and R samples, including those with batch effects
+#red: Reduced. Only C, U, and R samples that don't show batch effects
+
+types = c()
+
+#types = append(types, "all")
+#types = append(types, "no_batch")
+#types = append(types, "batch")
+types = append(types, "red")
+
+#Regex of samples names we want to keep
+tissues_1 = c()
+
+#tissues_1 = append(tissues_1, "CB")
+#tissues_1 = append(tissues_1, "CG")
+#tissues_1 = append(tissues_1, "CM")
+#tissues_1 = append(tissues_1, "CL")
+#tissues_1 = append(tissues_1, "genome_CB")
+tissues_1 = append(tissues_1, "genome_CG")
+#tissues_1 = append(tissues_1, "genome_CM")
+#tissues_1 = append(tissues_1, "genome_CL")
+
+tissues_2 = c()
+
+#tissues_2 = append(tissues_2, "CB")
+#tissues_2 = append(tissues_2, "CG")
+#tissues_2 = append(tissues_2, "CM")
+#tissues_2 = append(tissues_2, "CL")
+#tissues_2 = append(tissues_2, "genome_CB")
+#tissues_2 = append(tissues_2, "genome_CG")
+tissues_2 = append(tissues_2, "genome_CM")
+tissues_2 = append(tissues_2, "genome_CL")
+
+#genome = ""
+genome = "genome_"
+
+gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
+       
+info = paste0("..\\annotation\\sw_", genome, "kegg_info.csv")
+       
+
+for(type in types){
+  for(tissue_1 in tissues_1){
+    for(tissue_2 in tissues_2){
+      sig_modules = list.files("..\\data_analysis\\WGCNA_output\\overlap_comparison\\", pattern = paste0("^", tissue_1, "_", "[^_]*", "_", tissue_2), full.names = TRUE)
+      for(sig_module in sig_modules){
+        counts = paste0("..\\data_analysis\\", tissue_1, "_", type, "_txi.csv")
+        baseout = paste0("..\\data_analysis\\images\\WGCNA\\overlap\\", tissue_1, "_", tissue_2, "\\", tissue_1, "_", strsplit(sig_module, "_")[[1]][6], "_", tissue_2, "_", strsplit(sig_module, "_")[[1]][8+1], "_")
+          
+        listout = paste0("..\\data_analysis\\GO_lists\\WGCNA\\overlap\\", tissue_1, "_", tissue_2, "\\", tissue_1, "_", strsplit(sig_module, "_")[[1]][6], "_", tissue_2, "_", strsplit(sig_module, "_")[[1]][8+1], "_")
+        
+        
+        xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = sig_module, counts = counts, info = info, baseout = baseout, listout = listout, kegg = 1, gtm = gtm)))
+      }
+    }
+  }
+}
+```
+
+
+
 
 
 
