@@ -11,6 +11,7 @@ params:
 ```{r}
 library(pheatmap)
 library(ggvenn)
+library(eulerr)
 ```
 
 ```{r}
@@ -40,10 +41,21 @@ names(degs)[1] = "gene"
 venn_data = NULL
 for(r in params$labels){
   venn_data[paste(r)] = subset(degs, degs$tissue == r, select = "gene")
+  #handle edge case where empty is character(0), which throws an error, instead of NULL, which is ignored
+  if(identical(venn_data[paste(r)][[1]], character(0))){
+    venn_data[paste(r)] = NULL
+  }
 }
+
 ggvenn(venn_data, show_percentage = FALSE)
 
-ggsave(paste0(params$image_out, "venn.png"))
+#ggsave(paste0(params$image_out, "venn.png"))
+
+png(paste0(params$image_out, "venn.png"))
+
+plot(euler(venn_data, shape = "ellipse"), quantities = TRUE)
+
+dev.off()
 ```
 
 
