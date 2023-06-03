@@ -53,7 +53,7 @@ if(!dir.exists(image_dir)){
 ```{r}
 #read in samples and select the ones we want
 samples = read.csv(params$input_samples)
-samples = samples[grep(params$regex, samples$Name), ]
+#samples = samples[grep(params$regex, samples$Name), ]
 samples
 ```
 
@@ -182,7 +182,8 @@ col_anno = data.frame(treatment = samples$Treatment)
 rownames(col_anno) = samples$Name
 
 #define annotation colors for each treatment
-anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
+#anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
+anno_color_opts = c(Eight = "#00d65c",  Six = "#82b7ff", Four = "#9289ff", Two = "#ff9289")
 
 #generate vector of treatments in samples file
 treatments = unique(samples$Treatment)
@@ -200,7 +201,8 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 if("E" %in% samples$Treatment){
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, FvsS=(U+R)/2-(C+E+M)/3, levels = design)
 } else{
-  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
+  #contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
+  contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsSix=Two-Six, TwovsFour=Two-Four, FourvsEight=Four-Eight, FourvsSix=Four-Six, SixvsEight=Six-Eight, levels = design)
 }
 
 ```
@@ -361,68 +363,61 @@ chord = function(de_df){
 ```
 
 ```{r}
+calc_deg = function(fit, test, anno_color_opts, color){
+  sig_genes = run_test(fit, test)
+  
+  test_list = unlist(strsplit(test, "vs"))
+  samples_comp = subset(samples, Treatment == test_list[1] | Treatment == test_list[2])
+  
+  #make heatmaps if more than 1 DEG present (otherwise doesn't work)
+  if(length(rownames(sig_genes)) > 1){
+
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.png"))
+  
+    make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
+  
+  }
+  
+  write_sig_genes(sig_genes, test)
+  
+  return(sig_genes)
+}
+```
+
+
+```{r}
 #fit GLM
 fit = glmFit(y, design, robust = TRUE)
 
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
+#anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c",  Six = "#82b7ff", Four = "#9289ff", Two = "#ff9289")
 
-##UvsC
-sig_genes_UC = run_test(fit, "UvsC")
+tests = c("TwovsEight", "TwovsSix", "TwovsFour", "FourvsEight", "FourvsSix", "SixvsEight")
 
-#make heatmap
-#get only elements of list that match current treatments so that legend does not include extraneous colors
-anno_color = list(treatment = anno_color_opts[c("U","C")])
+#parameters to use for subsequent tests
+sig_genes = c()
+sig_genes_shared = c()
+sig_list = c()
+sig_list_up = c()
+sig_list_down = c()
 
-#select only samples that were subjected to compared treatments
-samples_comp = subset(samples, Treatment == "U" | Treatment == "C")
+for(test in tests){
+  res = calc_deg(fit, test, anno_color_opts, cols)
+  sig_genes = unique(sig_genes, rownames(res))
+  sig_genes_shared = intersect(sig_genes, rownames(res))
+  sig_list[[test]] = rownames(res)
+  sig_list_up[[test]] = rownames(subset(res, logFC > 0))
+  sig_list_down[[test]] = rownames(subset(res, logFC < 0))
+}
 
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UC), main = "UvsC significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "UvsC_deg_heatmap.png"))
+make_heatmap(cpms = cpms, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
 
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UC), main = "UvsC significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "UvsC_deg_heatmap_all_samples.png"))
+#de_df = data.frame(comps = c(rep("UvsC", nrow(sig_genes_UC)),rep("RvsC", nrow(sig_genes_RC)),rep("UvsR", nrow(sig_genes_UR))), genes = c(rownames(sig_genes_UC),rownames(sig_genes_RC),rownames(sig_genes_UR)))
 
-#save significant DEGs to file
-write_sig_genes(sig_genes_UC, "UvsC")
-
-
-##RvsC
-sig_genes_RC = run_test(fit, "RvsC")
-
-#make heatmap
-anno_color = list(treatment = anno_color_opts[c("R","C")])
-
-samples_comp = subset(samples, Treatment == "R" | Treatment == "C")
-
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_RC), main = "RvsC significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "RvsC_deg_heatmap.png"))
-
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_RC), main = "RvsC significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "RvsC_deg_heatmap_all_samples.png"))
-
-#save significant DEGs to file
-write_sig_genes(sig_genes_RC, "RvsC")
-
-
-##UvsR
-sig_genes_UR = run_test(fit, "UvsR")
-
-#make heatmap
-anno_color = list(treatment = anno_color_opts[c("U","R")])
-
-samples_comp = subset(samples, Treatment == "U" | Treatment == "R")
-
-make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UR), main = "UvsR significant DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "UvsR_deg_heatmap.png"))
-
-make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes_UR), main = "UvsR significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "UvsR_deg_heatmap_all_samples.png"))
-
-#save significant DEGs to file
-write_sig_genes(sig_genes_UR, "UvsR")
-
-make_heatmap(cpms = cpms, samples = samples, sig_genes = unique(c(rownames(sig_genes_UC), rownames(sig_genes_RC), rownames(sig_genes_UR))), main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
-
-de_df = data.frame(comps = c(rep("UvsC", nrow(sig_genes_UC)),rep("RvsC", nrow(sig_genes_RC)),rep("UvsR", nrow(sig_genes_UR))), genes = c(rownames(sig_genes_UC),rownames(sig_genes_RC),rownames(sig_genes_UR)))
-
-chord(de_df)
+#chord(de_df)
 ```
 
 
@@ -430,16 +425,14 @@ chord(de_df)
 ```{r}
 #make heatmap of significant genes shared across all treatments
 
-#get list of shared DEGs
-sig_genes = intersect(intersect(rownames(sig_genes_UC), rownames(sig_genes_RC)), rownames(sig_genes_UR))
-
 #only do this if there are shared DE genes
-if(length(sig_genes) > 0){
-  samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
+if(length(sig_genes_shared) > 0){
+  #samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
+  samples_comp = samples
   
   anno_color = list(treatment = anno_color_opts)
 
-  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes, main = "shared DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "shared_deg_heatmap.png"))
+  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes_shared, main = "shared DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "shared_deg_heatmap.png"))
 
 }
 ```
@@ -447,38 +440,22 @@ if(length(sig_genes) > 0){
 
 ```{r}
 #Venn diagrams of all DEGs
-#ggvenn(list("UvsC" = rownames(sig_genes_UC), "RvsC" = rownames(sig_genes_RC), "UvsR" = rownames(sig_genes_UR)), show_percentage = FALSE)
-
-#save output as image
-#ggsave(paste0(params$image_out, "treatment_venn_all.png"))
 
 png(paste0(params$image_out, "treatment_venn_all.png"))
 
-plot(euler(list("UvsC" = rownames(sig_genes_UC), "RvsC" = rownames(sig_genes_RC), "UvsR" = rownames(sig_genes_UR)), shape = "ellipse"), quantities = TRUE)
+plot(euler(sig_list, shape = "ellipse"), quantities = TRUE)
 
 dev.off()
-
-#Venn diagrams of upregulated DEGs
-#ggvenn(list("UvsC" = rownames(subset(sig_genes_UC, logFC > 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC > 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC > 0))), show_percentage = FALSE)
-
-#save output as image
-#ggsave(paste0(params$image_out, "treatment_venn_up.png"))
 
 png(paste0(params$image_out, "treatment_venn_up.png"))
 
-plot(euler(list("UvsC" = rownames(subset(sig_genes_UC, logFC > 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC > 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC > 0))), shape = "ellipse"), quantities = TRUE)
+plot(euler(sig_list_up, shape = "ellipse"), quantities = TRUE)
 
 dev.off()
 
-#Venn diagrams of downregulated DEGs
-#ggvenn(list("UvsC" = rownames(subset(sig_genes_UC, logFC < 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC < 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC < 0))), show_percentage = FALSE)
-
-#save output as image
-#ggsave(paste0(params$image_out, "treatment_venn_down.png"))
-
 png(paste0(params$image_out, "treatment_venn_down.png"))
 
-plot(euler(list("UvsC" = rownames(subset(sig_genes_UC, logFC < 0)), "RvsC" = rownames(subset(sig_genes_RC, logFC < 0)), "UvsR" = rownames(subset(sig_genes_UR, logFC < 0))), shape = "ellipse"), quantities = TRUE)
+plot(euler(sig_list_down, shape = "ellipse"), quantities = TRUE)
 
 dev.off()
 ```
