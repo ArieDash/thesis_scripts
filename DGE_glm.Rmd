@@ -421,8 +421,7 @@ make_heatmap(cpms = cpms, samples = samples, sig_genes = sig_genes, main = "Sign
 
 #only do this if there are shared DE genes
 if(length(sig_genes_shared) > 0){
-  #samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
-  samples_comp = samples
+  samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
   
   anno_color = list(treatment = anno_color_opts)
 
