@@ -31,7 +31,6 @@ library(tximport)
 ```{r}
 #read in samples and select the ones we want
 samples = read.csv(params$input_samples)
-samples = samples[grep(params$regex, samples$Name), ]
 samples = samples$Name
 samples
 ```

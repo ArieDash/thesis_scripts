@@ -53,7 +53,6 @@ if(!dir.exists(image_dir)){
 ```{r}
 #read in samples and select the ones we want
 samples = read.csv(params$input_samples)
-#samples = samples[grep(params$regex, samples$Name), ]
 samples
 ```
 
@@ -198,13 +197,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 
 ```{r}
 #make contrasts
-if("E" %in% samples$Treatment){
-  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, FvsS=(U+R)/2-(C+E+M)/3, levels = design)
-} else{
-  #contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
-  contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsSix=Two-Six, TwovsFour=Two-Four, FourvsEight=Four-Eight, FourvsSix=Four-Six, SixvsEight=Six-Eight, levels = design)
-}
-
+contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsSix=Two-Six, TwovsFour=Two-Four, FourvsEight=Four-Eight, FourvsSix=Four-Six, SixvsEight=Six-Eight, levels = design)
 ```
 
 
@@ -392,7 +385,6 @@ fit = glmFit(y, design, robust = TRUE)
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-#anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
 anno_color_opts = c(Eight = "#00d65c",  Six = "#82b7ff", Four = "#9289ff", Two = "#ff9289")
 
 tests = c("TwovsEight", "TwovsSix", "TwovsFour", "FourvsEight", "FourvsSix", "SixvsEight")
@@ -415,9 +407,6 @@ for(test in tests){
 
 make_heatmap(cpms = cpms, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
 
-#de_df = data.frame(comps = c(rep("UvsC", nrow(sig_genes_UC)),rep("RvsC", nrow(sig_genes_RC)),rep("UvsR", nrow(sig_genes_UR))), genes = c(rownames(sig_genes_UC),rownames(sig_genes_RC),rownames(sig_genes_UR)))
-
-#chord(de_df)
 ```
 
 
@@ -427,7 +416,6 @@ make_heatmap(cpms = cpms, samples = samples, sig_genes = sig_genes, main = "Sign
 
 #only do this if there are shared DE genes
 if(length(sig_genes_shared) > 0){
-  #samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
   samples_comp = samples
   
   anno_color = list(treatment = anno_color_opts)
@@ -459,49 +447,6 @@ plot(euler(sig_list_down, shape = "ellipse"), quantities = TRUE)
 
 dev.off()
 ```
-
-
-```{r}
-#compare fluctuating vs static treatments if passed in static treatments
-if("E" %in% samples$Treatment){
-  
-  ##UvsE
-  sig_genes_UE = run_test(fit, "UvsE")
-  
-  #add options to annotation colors
-  anno_color_opts = c(anno_color_opts, E = "thistle1")
-  
-  anno_color = list(treatment = anno_color_opts[c("U","E")])
-  
-  samples_comp = subset(samples, Treatment == "U" | Treatment == "E")
-
-  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UE), main = "UvsE significant DEG heatmap", color = cols, annotation_color = anno_color)
-  
-  #save significant DEGs to file
-  write_sig_genes(sig_genes_UE, "UvsE")
-  
-  
-  ##FvsS
-  sig_genes_FS = run_test(fit, "FvsS")
-
-  #rename samples so that treatments are either fluctuating or static
-  samples[samples == "E" | samples == "M" | samples == "C"] = "S"
-  samples[samples == "U" | samples == "R"] = "Fl"
-  
-  #add options to annotation colors
-  anno_color_opts = c(anno_color_opts, Fl = "gold3", S = "turquoise2")
-  
-  anno_color = list(treatment = anno_color_opts[c("Fl","S")])
-  
-  #make heatmap
-  make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes_FS), main = "FvsS DEG heatmap", color = cols, annotation_color = anno_color)
-  
-  #save significant DEGs to file
-  write_sig_genes(sig_genes_FS, "FvsS")
-}
-```
-
-
 
 
 
