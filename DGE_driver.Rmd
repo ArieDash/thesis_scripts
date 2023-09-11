@@ -98,6 +98,9 @@ tissues = c()
 
 tissues = append(tissues, "Zuri")
 
+p = 0.05
+lfc = 0.1
+
 #genome = "genome_"
 genome = ""
 
@@ -127,7 +130,7 @@ for(regex in tissues){
     report_output = paste0(genome, regex, "_", type, "_LRT.pdf")
 
     #render script in new R session to isolate it
-    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, counts_out = counts_out, deg_out = deg_out, image_out = image_out, base_out = base_out), output_file = report_output, output_format = 'pdf_document'))
+    xfun::Rscript_call(rmarkdown::render, list(input = "DGE_glm.Rmd", params = list(input_samples = input_samples, regex = regex, input_counts = input_counts, install = install, p = p, lfc = lfc, counts_out = counts_out, deg_out = deg_out, image_out = image_out, base_out = base_out), output_file = report_output, output_format = 'pdf_document'))
   
     #we only want to install on the first iteration, so set install to 0 now
     install = 0
@@ -221,33 +224,33 @@ for(treatment in treatments){
 #batch: all C, U, and R samples, including those with batch effects
 #red: Reduced. Only C, U, and R samples that don't show batch effects
 
+#types:
+
 types = c()
 
-#types = append(types, "all")
-#types = append(types, "no_batch")
-#types = append(types, "batch")
-types = append(types, "red")
-
+types = append(types, "oases")
+types = append(types, "trinity")
+ 
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
-tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+tissues = append(tissues, "Zuri")
 
 #genome = "genome_"
 genome = ""
 
 p = 0.05
-c = 1
+c = 0.5
 
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "UvsC")
-comparisons = append(comparisons, "RvsC")
-comparisons = append(comparisons, "UvsR")
+comparisons = append(comparisons, "TwovsFour")
+comparisons = append(comparisons, "TwovsSix")
+comparisons = append(comparisons, "TwovsEight")
+comparisons = append(comparisons, "FourvsSix")
+comparisons = append(comparisons, "FourvsEight")
+comparisons = append(comparisons, "SixvsEight")
 
 directions = c()
 
@@ -267,9 +270,9 @@ for(type in types){
        
        listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, "_")
        
-       gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
+       gtm = paste0("..\\annotation\\",  tissue, "_", type, "_gene_trans_map.csv")
        
-       info = paste0("..\\annotation\\sw_", genome, "gene_info.csv")
+       info = paste0("..\\annotation\\sw_", tissue, "_", type, "_kegg_info.csv")
        
        xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout, gtm = gtm, info = info)))
       }
@@ -297,31 +300,29 @@ for(type in types){
 
 types = c()
 
-#types = append(types, "all")
-#types = append(types, "no_batch")
-#types = append(types, "batch")
-types = append(types, "red")
-
+types = append(types, "oases")
+types = append(types, "trinity")
+ 
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
-tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+tissues = append(tissues, "Zuri")
 
-genome = "genome_"
-#genome = ""
+#genome = "genome_"
+genome = ""
 
 p = 0.05
-c = 1
+c = 0.1
 
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "UvsC")
-comparisons = append(comparisons, "RvsC")
-comparisons = append(comparisons, "UvsR")
+comparisons = append(comparisons, "TwovsFour")
+comparisons = append(comparisons, "TwovsSix")
+comparisons = append(comparisons, "TwovsEight")
+comparisons = append(comparisons, "FourvsSix")
+comparisons = append(comparisons, "FourvsEight")
+comparisons = append(comparisons, "SixvsEight")
 
 directions = c()
 
@@ -341,9 +342,9 @@ for(type in types){
        
        listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, "_")
        
-       gtm = paste0("..\\annotation\\", genome, "gene_trans_map.csv")
+       gtm = paste0("..\\annotation\\",  tissue, "_", type, "_gene_trans_map.csv")
        
-       info = paste0("..\\annotation\\sw_", genome, "kegg_info.csv")
+       info = paste0("..\\annotation\\sw_", tissue, "_", type, "_kegg_info.csv")
        
        xfun::Rscript_call(rmarkdown::render, list(input = "GO_analysis.Rmd", params = list(de = de, counts = counts, baseout = baseout, listout = listout, gtm = gtm, info = info, kegg = 1)))
       }

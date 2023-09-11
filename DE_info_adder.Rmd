@@ -1,0 +1,48 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+types = c()
+
+types = append("oases", types)
+types = append("trinity", types)
+
+p = 0.05
+lfc = 0.1
+
+comparisons = c()
+
+comparisons = append(comparisons, "TwovsFour")
+comparisons = append(comparisons, "TwovsSix")
+comparisons = append(comparisons, "TwovsEight")
+comparisons = append(comparisons, "FourvsSix")
+comparisons = append(comparisons, "FourvsEight")
+comparisons = append(comparisons, "SixvsEight")
+
+directions = c()
+
+directions = append(directions, "DE")
+directions = append(directions, "UP")
+directions = append(directions, "DOWN")
+
+for(type in types){
+  info = read.csv(paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\sw_Zuri_", type, "_kegg_info.csv"))
+  for(comparison in comparisons){
+    for(direction in directions){
+      de_list = paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_", type, "_", comparison, "_P", p, "C", lfc, "_", direction, ".csv")
+      de = read.csv(de_list)
+      
+      temp = merge(info[,c("accession_id", "gene_name", "protein_name", "go.biological_process.", "go.molecular_function.", "go.cellular_component.")], de, by.x = "accession_id", by.y = "X")
+      rownames(temp) = temp$accession_id
+      temp = temp[,-1]
+      write.csv(temp, de_list)
+    }
+  }
+  
+  
+  
+}
+```
+
