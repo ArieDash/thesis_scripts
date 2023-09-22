@@ -4,7 +4,7 @@ output:
   pdf_document: default
 params:
   input_samples: ""
-  regex: "CG"
+  regex: ""
   input_counts: ""
   install: 0
   p : 0.05
@@ -103,15 +103,21 @@ y <- DGEList(counts = cts, group = group)
 y <- scaleOffset(y, normMat)
 
 # filtering using the design information
-keep = filterByExpr(y)
+keep = filterByExpr(y, group = group, min.count = 10)
 y <- y[keep, ]
 ```
 
 ```{r}
-#write out filtered and normalized counts (done above) to file for use in WGCNA
+#write out filtered and normalized counts (done above)
+write.csv(y$counts, paste0(params$counts_out, "_filtered_counts.csv"))
+```
+
+
+```{r}
+#write out filtered and normalized counts (done above) as cpm to file for use in WGCNA
 #See https://github.com/loganlabcsumb/SCLERA_Tutuila_Thermotolerance/blob/main/RNAseq/WGCNA/WGCNA.Rmd for details
 
-write.csv(cpm(y, normalized.lib.size = TRUE), params$counts_out)
+write.csv(cpm(y, normalized.lib.size = TRUE), paste0(params$counts_out, "_filtered_cpm.csv"))
 ```
 
 
@@ -182,7 +188,7 @@ rownames(col_anno) = samples$Name
 
 #define annotation colors for each treatment
 #anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
-anno_color_opts = c(Eight = "#00d65c",  Six = "#82b7ff", Four = "#9289ff", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c",  Four = "#82b7ff", Two = "#ff9289")
 
 #generate vector of treatments in samples file
 treatments = unique(samples$Treatment)
@@ -197,7 +203,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 
 ```{r}
 #make contrasts
-contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsSix=Two-Six, TwovsFour=Two-Four, FourvsEight=Four-Eight, FourvsSix=Four-Six, SixvsEight=Six-Eight, levels = design)
+contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsFour=Two-Four, FourvsEight=Four-Eight, levels = design)
 ```
 
 
@@ -385,9 +391,9 @@ fit = glmFit(y, design, robust = TRUE)
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-anno_color_opts = c(Eight = "#00d65c",  Six = "#82b7ff", Four = "#9289ff", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c",  Four = "#82b7ff", Two = "#ff9289")
 
-tests = c("TwovsEight", "TwovsSix", "TwovsFour", "FourvsEight", "FourvsSix", "SixvsEight")
+tests = c("TwovsEight", "TwovsFour", "FourvsEight")
 
 #parameters to use for subsequent tests
 sig_genes = c()
