@@ -117,7 +117,7 @@ for(regex in tissues){
     input_counts = paste0("..\\data_analysis\\", genome, regex, "_", type, "_txi.csv")
     
     #Path to output directory for filtered gene lists for WGCNA
-    counts_out = paste0("..\\data_analysis\\", genome, regex, "_", type, "_filtered_counts.csv")
+    counts_out = paste0("..\\data_analysis\\", genome, regex, "_", type)
     
     #Path to output directory for DEG lists
     deg_out = paste0("..\\data_analysis\\DE_lists\\", genome, regex, "_", type, "_")
@@ -246,11 +246,8 @@ c = 0.5
 comparisons = c()
 
 comparisons = append(comparisons, "TwovsFour")
-comparisons = append(comparisons, "TwovsSix")
 comparisons = append(comparisons, "TwovsEight")
-comparisons = append(comparisons, "FourvsSix")
 comparisons = append(comparisons, "FourvsEight")
-comparisons = append(comparisons, "SixvsEight")
 
 directions = c()
 
@@ -318,11 +315,8 @@ c = 0.1
 comparisons = c()
 
 comparisons = append(comparisons, "TwovsFour")
-comparisons = append(comparisons, "TwovsSix")
 comparisons = append(comparisons, "TwovsEight")
-comparisons = append(comparisons, "FourvsSix")
 comparisons = append(comparisons, "FourvsEight")
-comparisons = append(comparisons, "SixvsEight")
 
 directions = c()
 
