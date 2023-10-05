@@ -98,7 +98,7 @@ tissues = c()
 
 tissues = append(tissues, "Zuri")
 
-p = 0.05
+p = 0.8
 lfc = 0.1
 
 #genome = "genome_"
@@ -308,7 +308,7 @@ tissues = append(tissues, "Zuri")
 #genome = "genome_"
 genome = ""
 
-p = 0.05
+p = 0.1
 c = 0.1
 
 #treatment contrasts to analyze

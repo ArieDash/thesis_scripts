@@ -103,7 +103,7 @@ y <- DGEList(counts = cts, group = group)
 y <- scaleOffset(y, normMat)
 
 # filtering using the design information
-keep = filterByExpr(y, group = group, min.count = 10)
+keep = filterByExpr(y, group = group, min.count = 10, min.prop=0.8)
 y <- y[keep, ]
 ```
 
