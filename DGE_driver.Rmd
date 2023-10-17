@@ -98,7 +98,7 @@ tissues = c()
 
 tissues = append(tissues, "Zuri")
 
-p = 0.8
+p = 0.1
 lfc = 0.1
 
 #genome = "genome_"
@@ -245,9 +245,7 @@ c = 0.5
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "TwovsFour")
 comparisons = append(comparisons, "TwovsEight")
-comparisons = append(comparisons, "FourvsEight")
 
 directions = c()
 
@@ -314,9 +312,7 @@ c = 0.1
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "TwovsFour")
 comparisons = append(comparisons, "TwovsEight")
-comparisons = append(comparisons, "FourvsEight")
 
 directions = c()
 

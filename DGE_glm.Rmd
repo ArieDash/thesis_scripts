@@ -188,7 +188,7 @@ rownames(col_anno) = samples$Name
 
 #define annotation colors for each treatment
 #anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
-anno_color_opts = c(Eight = "#00d65c",  Four = "#82b7ff", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c", Two = "#ff9289")
 
 #generate vector of treatments in samples file
 treatments = unique(samples$Treatment)
@@ -203,17 +203,17 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 
 ```{r}
 #make contrasts
-contrasts = makeContrasts(TwovsEight=Two-Eight, TwovsFour=Two-Four, FourvsEight=Four-Eight, levels = design)
+contrasts = makeContrasts(TwovsEight=Two-Eight, levels = design)
 ```
 
 
 ```{r}
 volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="Volcano plot", pch=20, y = F){
   if(y){
-   plot(FC, -1*log10(FDR), col = ifelse(FDR<=0.05, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20, ylim = c(0,10)) 
+   plot(FC, -1*log10(FDR), col = ifelse(FDR<=params$p, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20, ylim = c(0,10)) 
   }
   else{
-    plot(FC, -1*log10(FDR), col = ifelse(FDR<=0.05, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20)
+    plot(FC, -1*log10(FDR), col = ifelse(FDR<=params$p, "red", "black"), xlab = xlab, ylab = ylab, main = main, pch = 20)
   }
 }
 ```
@@ -391,9 +391,9 @@ fit = glmFit(y, design, robust = TRUE)
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-anno_color_opts = c(Eight = "#00d65c",  Four = "#82b7ff", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c", Two = "#ff9289")
 
-tests = c("TwovsEight", "TwovsFour", "FourvsEight")
+tests = c("TwovsEight")
 
 #parameters to use for subsequent tests
 sig_genes = c()
