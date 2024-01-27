@@ -667,7 +667,7 @@ tissues = c()
 tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CL")
 
 genome = "genome_"
 #genome = ""

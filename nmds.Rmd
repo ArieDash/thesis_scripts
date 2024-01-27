@@ -2,10 +2,10 @@
 title: "nmds"
 output: html_notebook
 params:
-  counts: ""
-  samples: ""
-  regex: ""
-  image_out: ""
+  counts: "..\\data_analysis\\genome_CB_red_filtered_counts.csv"
+  samples: "..\\data_analysis\\samples_red.csv"
+  regex: "CB"
+  image_out: "..\\data_analysis\\images\\genome_CB_red\\genome_CB_red"
 ---
 
 
@@ -46,11 +46,11 @@ treat = c(rep("control", c_count), rep("relaxation", r_count), rep("upwelling", 
 
 png(paste0(params$image_out, "_nmds.png"), width = 900, height = 600)
 
-ordiplot(nmds, type = "n", main = paste0(params$regex, " NMDS plot, stress = ", nmds$stress))
-points(nmds, display = "species", col = "grey")
+ordiplot(nmds, type = "n", main = paste0(params$regex, " NMDS plot, stress = ", nmds$stress), xlim = c(-0.1,0.1), ylim = c(-0.05,0.05))
+points(nmds, display = "species", col = rgb(190/255, 190/255, 190/255,0.25))
 ordiellipse(nmds, groups = treat, draw = "polygon", col = "grey90", label = FALSE)
 orditorp(nmds, display = "sites", air = 0.01, cex = 0.9, col = c(rep("green", c_count), rep("blue", r_count), rep("red", u_count)))
-legend(x = "topright", legend = c("C", "R", "U"), fill = c("green", "blue", "red"), bty = "n", cex = 0.75)
+legend(x = "topright", legend = c("Control", "Relaxation", "Upwelling"), fill = c("green", "blue", "red"), bty = "n", cex = 0.75)
 
 dev.off()
 ```
