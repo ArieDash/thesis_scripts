@@ -12,6 +12,10 @@ params:
 ---
 
 ```{r}
+#BiocManager::install("goseq")
+```
+
+```{r}
 library(ggplot2)
 library(tidyr)
 library(goseq)
@@ -20,7 +24,6 @@ library(GO.db)
 library(plyr)
 library(AnnotationDbi)
 ```
-
 
 
 ```{r}
@@ -75,7 +78,7 @@ rownames(counts) = counts$X
 counts = counts[,-1]
 #We only want the length data, which is the second half of the dataframe
 counts = counts[,(length(colnames(counts))/2+1):length(colnames(counts))]
-#get vector of named averge length for each gene
+#get vector of named average length for each gene
 ave_len = apply(counts, 1, mean)
 
 #need to keep only swissprot genes
@@ -126,7 +129,8 @@ dev.off()
 
 ```{r}
 go = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = c("GO:CC", "GO:BP", "GO:MF"), method = "Wallenius")
-go_terms = subset(go, go$numDEInCat > 0)
+go_terms = subset(go, go$numDEInCat > 3)
+go = subset(go, go$numDEInCat > 3)
 go$over_represented_pvalue = p.adjust(go$over_represented_pvalue, method = "fdr")
 go$under_represented_pvalue = p.adjust(go$under_represented_pvalue, method = "fdr")
 go = subset(go, go$over_represented_pvalue <= 0.05 | go$under_represented_pvalue <= 0.05)
@@ -158,6 +162,7 @@ if(params$kegg){
   gene2cat = gene_info[,c("accession_id", "path_desc")]
   
   go_kegg = goseq(pwf = pwf, gene2cat = gene2cat, method = "Wallenius")
+  go_kegg = subset(go_kegg, go_kegg$numDEInCat > 3)
   go_kegg$over_represented_pvalue = p.adjust(go_kegg$over_represented_pvalue, method = "fdr")
   go_kegg$under_represented_pvalue = p.adjust(go_kegg$under_represented_pvalue, method = "fdr")
   go_kegg = subset(go_kegg, go_kegg$over_represented_pvalue <= 0.05 | go_kegg$under_represented_pvalue <= 0.05)
