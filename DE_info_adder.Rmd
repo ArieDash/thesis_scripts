@@ -9,9 +9,9 @@ output: html_notebook
 
 
 ```{r}
-cpm = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\Zuri_oases_filtered_cpm.csv")
-de = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_TwovsEight_P0.1C0.1_full_table.csv")
-de$logP = -log10(de$PValue)
+cpm = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\Zuri_oases_limma_filtered_counts.csv")
+de = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_limma_TwovsEight_P0.1C0.1_full_table.csv")
+de$logP = -log10(de$P.Value)
 cpm
 de
 ```
@@ -31,7 +31,7 @@ info
 
 ```{r}
 total = merge(cpm, de, all.x = TRUE)
-names(total)[names(total) == "X"] = "Uniprot"
+names(total)[names(total) == "X"] = "gene_name"
 total
 ```
 
@@ -42,10 +42,10 @@ total
 
 
 ```{r}
-fin = merge(info, total, by.y = "Uniprot", by.x = "accession_id")
-fin = fin[order(fin$PValue),]
+fin = merge(info, total, by.y = "gene_name", by.x = "gene_name")
+fin = fin[order(fin$P.Value),]
 fin
-write.csv(fin, "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_TwovsEight_P0.1C0.1_DE_total_info.csv")
+write.csv(fin, "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_limma_TwovsEight_P0.1C0.1_DE_total_info.csv")
 ```
 
 ```{r}
