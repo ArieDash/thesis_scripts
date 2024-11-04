@@ -1,0 +1,246 @@
+---
+title: "DGE_limma"
+output: html_notebook
+params:
+  input_samples: "..\\data_analysis\\samples_Zuri.csv"
+  regex: "Zuri"
+  input_counts: "..\\data_analysis\\Zuri_oases_txi.csv"
+  install: 0
+  p : 0.1
+  lfc : 0.1
+  counts_out : "..\\data_analysis\\Zuri_oases_limma"
+  deg_out : "..\\data_analysis\\DE_lists\\Zuri_oases_limma_"
+  image_out : "..\\data_analysis\\images\\Zuri_oases\\Zuri_oases_limma_"
+  base_out: "..\\data_analysis\\"
+---
+
+```{r}
+#limma is an edgeR dependency
+library(edgeR)
+library(ggplot2)
+library(ggrepel)
+library(pheatmap)
+library(dplyr)
+```
+
+```{r}
+#check to make sure output directories exist, create them if not
+deg_dir = unlist(strsplit(params$deg_out, "\\\\[^\\]*$"))[1]
+image_dir = unlist(strsplit(params$image_out, "\\\\[^\\]*$"))
+
+if(!dir.exists(deg_dir)){
+  dir.create(deg_dir)
+}
+if(!dir.exists(image_dir)){
+  dir.create(image_dir)
+}
+```
+
+
+```{r}
+#read in samples and select the ones we want
+samples = read.csv(params$input_samples)
+samples
+```
+
+
+```{r}
+#read in txi data (counts and length offset)
+c_l = read.csv(params$input_counts)
+#set rownames to geneids
+rownames(c_l) = c_l$X
+#remove column containing geneids
+c_l = c_l[,-1]
+#extract counts and lengths tables from dataframe
+cts = c_l[,1:length(samples$Name)]
+colnames(cts) = samples$Name
+```
+
+```{r}
+#make DGEList object
+y = DGEList(cts)
+group = factor(samples$Treatment)
+
+#filter using the design information
+design = model.matrix(~0 + group)
+colnames(design) = levels(group)
+
+keep = filterByExpr(y, design)
+y = y[keep, ]
+
+plotMDS(y, col = as.numeric(group))
+
+#normalize and run voom
+y = calcNormFactors(y)
+y = voom(y, design, plot = TRUE)
+```
+
+```{r}
+#write out filtered and log2 normalized counts (done above)
+write.csv(y$E, paste0(params$counts_out, "_filtered_counts.csv"))
+```
+
+```{r}
+#make contrasts
+contrasts = makeContrasts(TwovsEight=Two-Eight, levels = design)
+```
+
+
+```{r}
+gg_volcano_plot = function(tt, xlab = "logFC", ylab = "-1*log10(FDR)", main="Volcano plot", add_labels = TRUE){
+  tt$dir = ifelse(tt$logFC<=0, "down", "up")
+  #tt$size = abs(tt$logFC)*(-log10(tt$adj.P.Val))
+  tt$size = abs(tt$logFC)*(-log10(tt$P.Value))
+  tt$gene_name = rownames(tt)
+  limit = max(abs(ceiling(max(tt$logFC))), abs(floor(min(tt$logFC))))
+  ret = ggplot(tt, aes(x = logFC, y = -log10(adj.P.Val))) + geom_point(aes(size = size, color = dir)) + scale_color_manual(values = c("up" = "red", "down" = "blue")) + xlim(-limit, limit) + xlab(xlab) + ylab(ylab) + ggtitle(main) + scale_size_area() + theme_bw() + theme(panel.border = element_blank(), panel.grid.minor = element_blank(), panel.grid.major = element_blank(), axis.line = element_line()) + theme(legend.position="none")
+  
+  if(add_labels){
+    ret = ret + geom_text_repel(data = filter(tt, threshold==TRUE), aes(label = gene_name), box.padding = 0.5, max.overlaps = Inf)
+  }
+  filter
+  return(ret)
+}
+```
+
+
+```{r}
+make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_color, filename){
+  
+  #subset matrix to include only significantly differentially expressed genes for the desired samples
+  sig_cpm = cpms[rownames(cpms) %in% sig_genes, colnames(cpms) %in% samples_comp$Name]
+  #make dataframe to indicate which samples were in which treatment for heatmap
+  col_anno = data.frame(treatment = samples_comp$Treatment)
+  rownames(col_anno) = samples_comp$Name
+  #only keep rownames of significant genes
+  #rownames(col_anno)[which(!(rownames(col_anno) %in% sig_genes))] = 
+  #make heatmap
+  if(length(sig_cpm) > 0){
+    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = T, annotation_col = col_anno, main = main, color = color, annotation_colors = annotation_color, filename = filename)
+  }
+  
+}
+```
+
+
+
+```{r}
+run_test = function(fit, contrast){
+  bft = eBayes(contrasts.fit(fit, contrasts[,contrast]))
+
+  tt = topTable(bft, sort.by = "P", n = Inf)
+  
+  #add column that indicates if gene is significantly differentially expressed or not
+  tt$threshold = tt$adj.P.Val < params$p & abs(tt$logFC) > params$lfc
+  tt$thresholdp = tt$P.Value < params$p & abs(tt$logFC) > params$lfc
+  
+  #Fancy volcano plot
+  ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced.pdf"), plot = gg_volcano_plot(tt))
+  ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced_no_labels.pdf"), plot = gg_volcano_plot(tt, add_labels = FALSE))
+  
+  #write out entire toptags table
+  write.csv(tt, paste0(params$deg_out, contrast, "_P", params$p, "C", params$lfc, "_full_table.csv"))
+  
+  #return names of genes that are significantly differentially expressed
+  return(list(subset(tt, threshold == TRUE)[,-ncol(tt)], subset(tt, thresholdp == TRUE)[,-ncol(tt)]))
+
+}
+```
+
+
+```{r}
+write_sig_genes = function(sig_genes, comparison){
+  #save significant DEGs to file
+  #Upregulated genes
+  write.csv(subset(sig_genes, logFC > 0), paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_UP.csv"))
+  #Downregulated genes
+  write.csv(subset(sig_genes, logFC < 0), paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_DOWN.csv"))
+  #All significant genes
+  write.csv(sig_genes, paste0(params$deg_out, comparison, "_P", params$p, "C", params$lfc, "_DE.csv"))
+}
+```
+
+```{r}
+calc_deg = function(fit, test, cpms, anno_color_opts, color){
+  res = run_test(fit, test)
+  sig_genes = res[[1]]
+  sigp = res[[2]]
+  
+  test_list = unlist(strsplit(test, "vs"))
+  samples_comp = subset(samples, Treatment == test_list[1] | Treatment == test_list[2])
+  
+  #make heatmaps if more than 1 DEG present (otherwise doesn't work)
+  if(length(rownames(sig_genes)) > 1){
+
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.pdf"))
+    
+    #pvalue heatmap
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sigp), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_PValue_deg_heatmap.pdf"))
+  
+    make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
+  
+  }
+  
+  write_sig_genes(sig_genes, test)
+  write_sig_genes(sigp, paste0(test, "_PValue"))
+  
+  return(sig_genes)
+}
+```
+
+
+```{r}
+#fit GLM
+fit = lmFit(y, design)
+
+#Test for DEG between any two groups
+
+#define annotation colors for each treatment for heatmaps
+anno_color_opts = c(Eight = "#00d65c", Four = "#82b7ff", Two = "#ff9289")
+#color ramp palette for heatmaps
+cols = colorRampPalette(c("blue", "black", "red"))(300)
+
+tests = c("TwovsEight")
+
+#parameters to use for subsequent tests
+sig_genes = c()
+sig_genes_shared = c()
+sig_list = c()
+sig_list_up = c()
+sig_list_down = c()
+
+for(test in tests){
+  res = calc_deg(fit, test, cpms = y$E, anno_color_opts, cols)
+  sig_genes = unique(sig_genes, rownames(res))
+  sig_genes_shared = intersect(sig_genes, rownames(res))
+  sig_list[[test]] = rownames(res)
+  sig_list_up[[test]] = rownames(subset(res, logFC > 0))
+  sig_list_down[[test]] = rownames(subset(res, logFC < 0))
+}
+
+make_heatmap(cpms = y$E, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
