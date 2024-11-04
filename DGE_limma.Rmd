@@ -56,6 +56,8 @@ cts = c_l[,1:length(samples$Name)]
 colnames(cts) = samples$Name
 ```
 
+
+
 ```{r}
 #make DGEList object
 y = DGEList(cts)
