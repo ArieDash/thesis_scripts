@@ -3,18 +3,17 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: ""
-  regex: ""
-  input_counts: ""
+  input_samples: "..\\data_analysis\\samples_Zuri.csv"
+  regex: "Zuri"
+  input_counts: "..\\data_analysis\\Zuri_oases_txi.csv"
   install: 0
-  p : 0.05
-  lfc : 1
-  counts_out : ""
-  deg_out : ""
-  image_out : ""
-  base_out: ""
+  p : 0.1
+  lfc : 0.1
+  counts_out : "..\\data_analysis\\Zuri_oases"
+  deg_out : "..\\data_analysis\\DE_lists\\Zuri_oases_"
+  image_out : "..\\data_analysis\\images\\Zuri_oases\\Zuri_oases_"
+  base_out: "..\\data_analysis\\"
 ---
-
 
 
 
@@ -33,6 +32,8 @@ library(pheatmap)
 library(ggvenn)
 library(circlize)
 library(eulerr)
+library(ggrepel)
+library(dplyr)
 ```
 
 
@@ -106,6 +107,16 @@ y <- scaleOffset(y, normMat)
 keep = filterByExpr(y, group = group, min.count = 10, min.prop=0.8)
 y <- y[keep, ]
 ```
+
+```{r}
+#remove genes flagged later in analysis as problematic
+curated = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Oases_alldatatable.csv")
+keep_new = which(rownames(y$counts) %in% intersect(rownames(y$counts), curated$Uniprot))
+y <- y[keep_new, ]
+length(rownames(y$counts))
+```
+
+
 
 ```{r}
 #write out filtered and normalized counts (done above)
@@ -188,7 +199,7 @@ rownames(col_anno) = samples$Name
 
 #define annotation colors for each treatment
 #anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
-anno_color_opts = c(Eight = "#00d65c", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c", Four = "#82b7ff", Two = "#ff9289")
 
 #generate vector of treatments in samples file
 treatments = unique(samples$Treatment)
@@ -196,7 +207,7 @@ treatments = unique(samples$Treatment)
 anno_color = list(treatment = anno_color_opts[treatments])
 
 #note that this function will not overwrite existing files to save its output. Clear out old files or write code to detect and delete them if you plan on running repeatedly
-pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap (log2 cpm)", color = cols, annotation_colors = anno_color, filename = paste0(params$image_out, "total_expression_heatmap.png"))
+pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = "Total expression heatmap (z-score)", color = cols, annotation_colors = anno_color, filename = paste0(params$image_out, "total_expression_heatmap.png"))
 ```
 
 
@@ -219,6 +230,23 @@ volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="V
 ```
 
 
+```{r}
+gg_volcano_plot = function(tt, xlab = "logFC", ylab = "-1*log10(FDR)", main="Volcano plot", add_labels = TRUE){
+  tt$dir = ifelse(tt$logFC<=0, "down", "up")
+  #tt$size = abs(tt$logFC)*(-log10(tt$FDR))
+  tt$size = abs(tt$logFC)*(-log10(tt$PValue))
+  tt$gene_name = rownames(tt)
+  limit = max(abs(ceiling(max(tt$logFC))), abs(floor(min(tt$logFC))))
+  ret = ggplot(tt, aes(x = logFC, y = -log10(FDR))) + geom_point(aes(size = size, color = dir)) + scale_color_manual(values = c("up" = "red", "down" = "blue")) + xlim(-limit, limit) + xlab(xlab) + ylab(ylab) + ggtitle(main) + scale_size_area() + theme_bw() + theme(panel.border = element_blank(), panel.grid.minor = element_blank(), panel.grid.major = element_blank(), axis.line = element_line()) + theme(legend.position="none")
+  
+  if(add_labels){
+    ret = ret + geom_text_repel(data = filter(tt, threshold==TRUE), aes(label = gene_name), box.padding = 0.5, max.overlaps = Inf)
+  }
+  
+  return(ret)
+}
+```
+
 
 ```{r}
 make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_color, filename){
@@ -228,9 +256,11 @@ make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_c
   #make dataframe to indicate which samples were in which treatment for heatmap
   col_anno = data.frame(treatment = samples_comp$Treatment)
   rownames(col_anno) = samples_comp$Name
+  #only keep rownames of significant genes
+  #rownames(col_anno)[which(!(rownames(col_anno) %in% sig_genes))] = 
   #make heatmap
   if(length(sig_cpm) > 0){
-    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = F, annotation_col = col_anno, main = main, color = color, annotation_colors = annotation_color, filename = filename)
+    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = T, annotation_col = col_anno, main = main, color = color, annotation_colors = annotation_color, filename = filename)
   }
   
 }
@@ -251,7 +281,7 @@ run_test = function(fit, contrast){
   abline(h = c(-1,1), col = "blue")
   
   dev.off()
-  
+
   tt = topTags(lrt, n = NULL)$table
   
   #save output as image
@@ -272,9 +302,17 @@ run_test = function(fit, contrast){
   
   #add column that indicates if gene is significantly differentially expressed or not
   tt$threshold = tt$FDR < params$p & abs(tt$logFC) > params$lfc
+  tt$thresholdp = tt$PValue < params$p & abs(tt$logFC) > params$lfc
+  
+  #Fancy volcano plot
+  ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced.pdf"), plot = gg_volcano_plot(tt))
+  ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced_no_labels.pdf"), plot = gg_volcano_plot(tt, add_labels = FALSE))
+  
+  #write out entire toptags table
+  write.csv(tt, paste0(params$deg_out, contrast, "_P", params$p, "C", params$lfc, "_full_table.csv"))
   
   #return names of genes that are significantly differentially expressed
-  return(subset(tt, threshold == TRUE)[,-ncol(tt)])
+  return(list(subset(tt, threshold == TRUE)[,-ncol(tt)], subset(tt, thresholdp == TRUE)[,-ncol(tt)]))
 
 }
 ```
@@ -363,7 +401,9 @@ chord = function(de_df){
 
 ```{r}
 calc_deg = function(fit, test, anno_color_opts, color){
-  sig_genes = run_test(fit, test)
+  res = run_test(fit, test)
+  sig_genes = res[[1]]
+  sigp = res[[2]]
   
   test_list = unlist(strsplit(test, "vs"))
   samples_comp = subset(samples, Treatment == test_list[1] | Treatment == test_list[2])
@@ -371,13 +411,17 @@ calc_deg = function(fit, test, anno_color_opts, color){
   #make heatmaps if more than 1 DEG present (otherwise doesn't work)
   if(length(rownames(sig_genes)) > 1){
 
-    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.png"))
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.pdf"))
+    
+    #pvalue heatmap
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sigp), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_PValue_deg_heatmap.pdf"))
   
     make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
   
   }
   
   write_sig_genes(sig_genes, test)
+  write_sig_genes(sigp, paste0(test, "_PValue"))
   
   return(sig_genes)
 }
@@ -391,7 +435,7 @@ fit = glmFit(y, design, robust = TRUE)
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-anno_color_opts = c(Eight = "#00d65c", Two = "#ff9289")
+anno_color_opts = c(Eight = "#00d65c", Four = "#82b7ff", Two = "#ff9289")
 
 tests = c("TwovsEight")
 
