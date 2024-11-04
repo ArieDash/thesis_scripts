@@ -129,10 +129,39 @@ go = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = c("GO:CC", "GO:BP", "GO:M
 go_terms = subset(go, go$numDEInCat > 0)
 go$over_represented_pvalue = p.adjust(go$over_represented_pvalue, method = "fdr")
 go$under_represented_pvalue = p.adjust(go$under_represented_pvalue, method = "fdr")
+
+#go_terms$over_represented_qvalue = p.adjust(go_terms$over_represented_pvalue, method = "fdr")
+#go_terms$under_represented_qvalue = p.adjust(go_terms$under_represented_pvalue, method = "fdr")
+#write.csv(go_terms, paste0(params$listout, "GO_list.csv"))
+
 go = subset(go, go$over_represented_pvalue <= 0.05 | go$under_represented_pvalue <= 0.05)
 go
 go_terms
 ```
+
+```{r}
+test_by_ont = function(pwf, gene2cat, test.cats, method = "Wallenius"){
+  
+  ontology = unlist(strsplit(test.cats, ":"))[2]
+  
+  res = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = test.cats, method = method)
+  res$over_represented_qvalue = p.adjust(res$over_represented_pvalue, method = "fdr")
+  res$under_represented_qvalue = p.adjust(res$under_represented_pvalue, method = "fdr")
+  write.csv(res, paste0(params$listout, ontology, "_total_GO_list.csv"))
+  
+  res = subset(res, res$over_represented_qvalue <= 0.05 | res$under_represented_qvalue <= 0.05)
+  
+  write.csv(res, paste0(params$listout, ontology, "_sig_GO_list.csv"))
+}
+```
+
+```{r}
+onts = c("GO:CC", "GO:BP", "GO:MF")
+for(ont in onts){
+  test_by_ont(pwf, gene2cat, ont)
+}
+```
+
 
 ```{r}
 gen_intercept = function(df){
@@ -328,7 +357,7 @@ if(nrow(MF_sig_terms) > 0){
   ggsave(paste0(params$baseout, "sig_MF.png"), width = 8, height = 11, units = "in")
   
   #write out sig list
-  write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
+  #write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
 }
 ```
 
@@ -355,7 +384,7 @@ if(nrow(BP_sig_terms) > 0){
 
   ggsave(paste0(params$baseout, "sig_BP.png"), width = 8, height = 11, units = "in")
   
-  write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
+  #write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
 }
 ```
 
@@ -382,7 +411,7 @@ if(nrow(CC_sig_terms) > 0){
 
   ggsave(paste0(params$baseout, "sig_CC.png"), width = 8, height = 11, units = "in")
   
-  write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
+  #write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 }
 ```
 
