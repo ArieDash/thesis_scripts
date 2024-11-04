@@ -3,50 +3,78 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+
+
+
+
+
 ```{r}
-types = c()
+cpm = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\Zuri_oases_filtered_cpm.csv")
+de = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_TwovsEight_P0.1C0.1_full_table.csv")
+de$logP = -log10(de$PValue)
+cpm
+de
+```
 
-types = append("oases", types)
-types = append("trinity", types)
- 
-p = 0.1
-lfc = 0.1
+```{r}
+curated = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Oases_alldatatable.csv")
+```
 
-comparisons = c()
+```{r}
+info = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\Zuri_oases_gene_info_new.csv")
+info = info[,c(2, 3, 14)]
+info
+```
 
-comparisons = append(comparisons, "TwovsEight")
 
-directions = c()
 
-directions = append(directions, "DE")
-directions = append(directions, "UP")
-directions = append(directions, "DOWN")
 
-for(type in types){
-  info = read.csv(paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\sw_Zuri_", type, "_kegg_info.csv"))
-  counts = read.csv(paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\Zuri_", type, "_filtered_counts.csv"))
-  for(comparison in comparisons){
-    for(direction in directions){
-      de_list = paste0("C:\\Users\\Arie\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_", type, "_", comparison, "_P", p, "C", lfc, "_", direction, ".csv")
-      de = read.csv(de_list)
-      
-      temp = unique(merge(info[,c("accession_id", "gene_name", "protein_name", "go.biological_process.", "go.molecular_function.", "go.cellular_component.", "path_desc")], de, by.x = "accession_id", by.y = "X"))
+```{r}
+total = merge(cpm, de, all.x = TRUE)
+names(total)[names(total) == "X"] = "Uniprot"
+total
+```
 
-      temp = unique(merge(temp, counts, by.x = "accession_id", by.y = "X"))
-      rownames(temp) = temp$accession_id
-      names(temp)[names(temp == "path_desc")] = "kegg_pathway"
-      temp = temp[,-1]
-      write.csv(temp, de_list)
-    }
-  }
-  
-  
-  
-}
+```{r}
+#fin = merge(curated[,c(1,2)], info, by.y = "accession_id", by.x = "Uniprot")
+#fin
 ```
 
 
 ```{r}
-temp
+fin = merge(info, total, by.y = "Uniprot", by.x = "accession_id")
+fin = fin[order(fin$PValue),]
+fin
+write.csv(fin, "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_TwovsEight_P0.1C0.1_DE_total_info.csv")
 ```
+
+```{r}
+fin[duplicated(fin),]
+```
+
+
+```{r}
+missing = setdiff(cpm$X, curated$Uniprot)
+length(intersect(missing, de$X))
+```
+
+```{r}
+filter(curated, Uniprot %in% c("O73824", "Q3UR50", "Q90460", "Q08478", "Q91119", "Q91Z96", "O93566", "Q91120", "C0H9B6", "Q6UXG2", "Q9YGK2"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
