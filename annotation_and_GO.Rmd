@@ -131,8 +131,11 @@ print(sw_gene_info)
 write.csv(py$sw_gene_info, params$output)
 ```
 ```{r}
-temp = merge(atm, py$sw_gene_info)
+temp = merge(atm, py$sw_gene_info, by.x = "accession_id", by.y = "accession_id")
 gtm = data.frame("transcript_name" = temp$transcript_name, "gene_name" = temp$gene_name, "origin" = temp$origin)
+to_clean = grepl(";", gtm$gene_name)
+gtm$gene_name[to_clean] = unname(sapply(gtm[to_clean,]$gene_name, function(x){unlist(strsplit(x, ";", fixed = TRUE))[1]}))
+gtm = gtm[-which(gtm$gene_name == ""),]
 write.csv(gtm, params$gtm)
 ```
 
