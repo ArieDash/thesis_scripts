@@ -99,7 +99,7 @@ def extract_go(go_strs):
 #read in annotation info
 gene_info = read.csv(params$info)
 #only keep id and GO columns
-gene_info = gene_info[,c("accession_id", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
+gene_info = gene_info[,c("gene_name", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
 
 #process GO columns to only keep GO identifiers. We do this in python because it is much more efficient and significantly easier there because we can use complex list comprehensions
 gene_info$go.molecular_function. = py$extract_go(gene_info$go.molecular_function.)
@@ -108,7 +108,7 @@ gene_info$go.cellular_component. = py$extract_go(gene_info$go.cellular_component
 
 #create named list in correct format for goseq by combining all go terms for each gene into a single vector
 gene2cat = apply(gene_info[,-1], 1, function(x) unlist(x, use.names = FALSE))
-names(gene2cat) = gene_info$accession_id
+names(gene2cat) = gene_info$gene_name
 
 ```
 
@@ -184,7 +184,7 @@ if(params$kegg){
   gene_info = read.csv(params$info)
   #only keep id and KEGG columns
   #Ok to keep as a dataframe because it is a one to one mapping
-  gene2cat = gene_info[,c("accession_id", "path_desc")]
+  gene2cat = gene_info[,c("gene_name", "path_desc")]
   
   go_kegg = goseq(pwf = pwf, gene2cat = gene2cat, method = "Wallenius")
   go_kegg$over_represented_pvalue = p.adjust(go_kegg$over_represented_pvalue, method = "fdr")
