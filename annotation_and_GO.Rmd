@@ -2,9 +2,9 @@
 title: "R Notebook"
 output: html_notebook
 params:
-  gtm: "..\\annotation\\gene_trans_map.csv"
+  gtm: "..\\annotation\\Zuri_oases_gene_trans_map_new.csv"
   de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
-  output: "..\\annotation\\sw_gene_info.csv"
+  output: "..\\annotation\\Zuri_oases_gene_info_new.csv"
 ---
 
 ```{r}
