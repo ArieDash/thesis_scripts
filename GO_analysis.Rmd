@@ -68,7 +68,6 @@ head(gene_vector)
 ```{r}
 #read in count and length data
 counts = read.csv(params$counts)
-counts$X = sapply(strsplit(counts$X, ".", fixed = TRUE), function(x) x[1])
 #set rownames to gene names
 rownames(counts) = counts$X
 #remove gene names column
