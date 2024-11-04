@@ -242,6 +242,9 @@ tissues = append(tissues, "Zuri")
 #genome = "genome_"
 genome = ""
 
+#limma = ""
+limma = "limma_"
+
 p = 0.1
 c = 0.1
 
@@ -260,13 +263,13 @@ for(type in types){
   for(tissue in tissues){
     for(comparison in comparisons){
       for(direction in directions){
-       de = paste0("..\\data_analysis\\DE_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, ".csv") 
+       de = paste0("..\\data_analysis\\DE_lists\\", genome, tissue, "_", type, "_", limma, comparison, "_P", p, "C", c, "_", direction, ".csv") 
 
        counts = paste0("..\\data_analysis\\", genome, tissue, "_", type, "_txi.csv")
        
-       baseout = paste0("..\\data_analysis\\images\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", comparison, "_", direction, "_")
+       baseout = paste0("..\\data_analysis\\images\\", genome, tissue, "_", type, "\\", genome, tissue, "_", type, "_", limma,  comparison, "_", direction, "_")
        
-       listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_", comparison, "_P", p, "C", c, "_", direction, "_")
+       listout = paste0("..\\data_analysis\\GO_lists\\", genome, tissue, "_", type, "_", limma, comparison, "_P", p, "C", c, "_", direction, "_")
        
        gtm = paste0("..\\annotation\\",  tissue, "_", type, "_gene_trans_map_new.csv")
        
