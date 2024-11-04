@@ -15,11 +15,10 @@ colnames(nr) = c("transcript_name", "nr_gene_name", "nr_e-value", "nr_bitscore")
 
 ```{r}
 #input swissprot data
-sp = read.csv("..\\annotation\\meta_swissprot_unique.tsv", sep = "\t", header = FALSE)
+sp = read.csv("..\\annotation\\Zuri_oases_swissprot_new.tsv", sep = "\t", header = FALSE)
 sp = sp[,c(1,2,11,12)]
 colnames(sp) = c("transcript_name", "sp_gene_name", "sp_e-value", "sp_bitscore")
 ```
-
 
 
 
@@ -132,10 +131,35 @@ sp$origin = "swissprot"
 ```
 
 ```{r}
-#write genome gene_trans_map to file
-write.csv(sp, "..\\annotation\\Zuri_trinity_gene_trans_map.csv")
+#if ran DIAMOND with k > 1, use this chunk to eliminate extraneous info from gene name column
+sp
+sp$gene_name = unname(sapply(sp$gene_name, FUN = function(x){unlist(strsplit(x, "|", fixed = TRUE))[2]}))
+sp
 ```
 
+```{r}
+sp = sp[,c(1,2)]
+colnames(sp) = c("transcript_name", "gene_name")
+sp$origin = "swissprot"
+```
+
+```{r}
+ac = read.csv("..\\annotation\\uniprot_sprot_fish_ac.csv")[2]
+ac = ac$x
+ac
+```
+
+```{r}
+sp_filter = sp[sp$gene_name %in% ac,]
+sp_dup = !duplicated(sp_filter$transcript_name)
+sp_filter = sp_filter[sp_dup,]
+```
+
+
+```{r}
+#write genome gene_trans_map to file
+write.csv(sp_filter, "..\\annotation\\Zuri_oases_gene_trans_map_new.csv")
+```
 
 
 

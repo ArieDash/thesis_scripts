@@ -1,0 +1,73 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+```
+
+```{r}
+db = read_file("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\uniprot_sprot_vertebrates.dat")
+```
+
+```{r}
+db_split = unlist(strsplit(db, "//\n"))
+```
+
+
+```{r}
+fish = grepl("\nOC   Actinopterygii", db_split)
+```
+
+```{r}
+db_fish = db_split[fish]
+```
+
+```{r}
+db_fish[1:3]
+```
+
+
+```{r}
+cat(db_fish, file = "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\uniprot_sprot_fish.dat", sep = "")
+```
+
+```{r}
+ac_split = unlist(strsplit(db_fish, "\n"))
+ac_split[1:3]
+```
+
+
+```{r}
+ac_loc = grepl("^AC  ", ac_split)
+ac = ac_split[ac_loc]
+ac
+```
+
+```{r}
+ac = unname(sapply(ac, FUN = function(x){unlist(strsplit(x, "   "))[2]}))
+```
+
+
+```{r}
+ac = gsub(";", "", ac)
+```
+
+```{r}
+ac = unlist(unname(sapply(ac, FUN = function(x){unlist(strsplit(x, " "))})))
+```
+
+
+```{r}
+write.csv(ac, file = "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\uniprot_sprot_fish_ac.csv")
+```
+
+
+
+
+
+
+
+
+
