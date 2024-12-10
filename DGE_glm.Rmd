@@ -3,16 +3,16 @@ title: "GLM DGE"
 output:
   pdf_document: default
 params:
-  input_samples: "..\\data_analysis\\samples_Zuri.csv"
-  regex: "Zuri"
-  input_counts: "..\\data_analysis\\Zuri_oases_txi.csv"
+  input_samples: ""
+  regex: ""
+  input_counts: ""
   install: 0
-  p : 0.1
+  p : 0.05
   lfc : 0.1
-  counts_out : "..\\data_analysis\\Zuri_oases"
-  deg_out : "..\\data_analysis\\DE_lists\\Zuri_oases_"
-  image_out : "..\\data_analysis\\images\\Zuri_oases\\Zuri_oases_"
-  base_out: "..\\data_analysis\\"
+  counts_out : ""
+  deg_out : ""
+  image_out : ""
+  base_out: ""
 ---
 
 
@@ -495,7 +495,45 @@ dev.off()
 ```
 
 
+```{r}
+#compare fluctuating vs static treatments if passed in static treatments
+if("E" %in% samples$Treatment){
+  
+  ##UvsE
+  sig_genes_UE = run_test(fit, "UvsE")
+  
+  #add options to annotation colors
+  anno_color_opts = c(anno_color_opts, E = "thistle1")
+  
+  anno_color = list(treatment = anno_color_opts[c("U","E")])
+  
+  samples_comp = subset(samples, Treatment == "U" | Treatment == "E")
 
+  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UE), main = "UvsE significant DEG heatmap", color = cols, annotation_color = anno_color)
+  
+  #save significant DEGs to file
+  write_sig_genes(sig_genes_UE, "UvsE")
+  
+  
+  ##FvsS
+  sig_genes_FS = run_test(fit, "FvsS")
+
+  #rename samples so that treatments are either fluctuating or static
+  samples[samples == "E" | samples == "M" | samples == "C"] = "S"
+  samples[samples == "U" | samples == "R"] = "Fl"
+  
+  #add options to annotation colors
+  anno_color_opts = c(anno_color_opts, Fl = "gold3", S = "turquoise2")
+  
+  anno_color = list(treatment = anno_color_opts[c("Fl","S")])
+  
+  #make heatmap
+  make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes_FS), main = "FvsS DEG heatmap", color = cols, annotation_color = anno_color)
+  
+  #save significant DEGs to file
+  write_sig_genes(sig_genes_FS, "FvsS")
+}
+```
 
 
 
