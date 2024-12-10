@@ -9,17 +9,16 @@ output: html_notebook
 #input nr data
 nr = read.csv("..\\annotation\\meta_nr_unique.tsv", sep = "\t", header = FALSE)
 nr = nr[,c(1,2,11,12)]
-colnames(nr) = c("transcript_name", "nr_gene_name", "nr_e-value", "nr_bitscore")
+colnames(nr) = c("transcript_name", "nr_accession_id", "nr_e-value", "nr_bitscore")
 ```
 
 
 ```{r}
 #input swissprot data
-sp = read.csv("..\\annotation\\meta_swissprot_unique.tsv", sep = "\t", header = FALSE)
+sp = read.csv("..\\annotation\\Zuri_oases_swissprot_new.tsv", sep = "\t", header = FALSE)
 sp = sp[,c(1,2,11,12)]
-colnames(sp) = c("transcript_name", "sp_gene_name", "sp_e-value", "sp_bitscore")
+colnames(sp) = c("transcript_name", "sp_accession_id", "sp_e-value", "sp_bitscore")
 ```
-
 
 
 
@@ -50,22 +49,22 @@ merged
 
 
 ```{r}
-#we just want one column that has the gene names,start with one preferring the swissprot names
+#we just want one column that has the accession names,start with one preferring the swissprot names
 #If the transcript has a swissprot annotation, keep that one. Otherwise, use the NR annotation. Have a column that indicates which reference the annotation is from
 
-pref_sp = merged[c('transcript_name', 'sp_gene_name')]
+pref_sp = merged[c('transcript_name', 'sp_accession_id')]
 pref_sp$origin = "swissprot"
-colnames(pref_sp) = c("transcript_name", "gene_name", "origin")
+colnames(pref_sp) = c("transcript_name", "accession_id", "origin")
 
-#get indices where gene name is currently NA
-na = is.na(pref_sp$gene_name)
-#set gene name of na entries to the nr gene name
-pref_sp$gene_name[na] = merged$nr_gene_name[na]
-#set origin of nr gene names to nr
+#get indices where accession name is currently NA
+na = is.na(pref_sp$accession_id)
+#set accession name of na entries to the nr accession name
+pref_sp$accession_id[na] = merged$nr_accession_id[na]
+#set origin of nr accession names to nr
 pref_sp$origin[na] = "nr"
 
-#remove the "." and version number on each gene identifier for use with downstream tools
-pref_sp$gene_name = sapply(strsplit(pref_sp$gene_name, ".", fixed = TRUE), function(x) x[1])
+#remove the "." and version number on each accession identifier for use with downstream tools
+pref_sp$accession_id = sapply(strsplit(pref_sp$accession_id, ".", fixed = TRUE), function(x) x[1])
 
 pref_sp
 ```
@@ -87,7 +86,7 @@ na = ifelse(bits>0, 1, NA)
 na = is.na(na)
 #We now want to overwrite anything that is not NA, in other words anything with a bitscore difference >0 should be set to the nr annotation
 #Note: anything with a bitscore difference of 0 (entries with the same bitscore in both databases) will have the swissprot annotation
-pref_bit$gene_name[!na] = merged$nr_gene_name[!na]
+pref_bit$accession_id[!na] = merged$nr_accession_id[!na]
 #now sset origin for those entries
 pref_bit$origin[!na] = "nr"
 
@@ -103,39 +102,64 @@ https://www.ncbi.nlm.nih.gov/protein/TNN81439.1
 
 
 ```{r}
-#write gene_trans_map to file
-write.csv(pref_sp, "..\\annotation\\gene_trans_map.csv")
+#write accession_trans_map to file
+write.csv(pref_sp, "..\\annotation\\accession_trans_map.csv")
 ```
 
 ```{r}
 #input genome swissprot data
 sp = read.csv("..\\annotation\\meta_swissprot_unique.tsv", sep = "\t", header = FALSE)
 sp = sp[,c(1,2)]
-colnames(sp) = c("transcript_name", "gene_name")
-sp$gene_name = sapply(strsplit(sp$gene_name, ".", fixed = TRUE), function(x) x[1])
+colnames(sp) = c("transcript_name", "accession_id")
+sp$accession_id = sapply(strsplit(sp$accession_id, ".", fixed = TRUE), function(x) x[1])
 sp$origin = "swissprot"
 ```
 
 ```{r}
-#write gene_trans_map to file
-write.csv(sp, "..\\annotation\\gene_trans_map.csv")
+#write accession_trans_map to file
+write.csv(sp, "..\\annotation\\accession_trans_map.csv")
 ```
 
 
 ```{r}
 #input genome swissprot data
-sp = read.csv("..\\annotation\\genome_swissprot.tsv", sep = "\t", header = FALSE)
+sp = read.csv("..\\annotation\\Zuri_trinity_swissprot.tsv", sep = "\t", header = FALSE)
 sp = sp[,c(1,2)]
-colnames(sp) = c("transcript_name", "gene_name")
-sp$gene_name = sapply(strsplit(sp$gene_name, ".", fixed = TRUE), function(x) x[1])
+colnames(sp) = c("transcript_name", "accession_id")
+sp$accession_id = sapply(strsplit(sp$accession_id, ".", fixed = TRUE), function(x) x[1])
 sp$origin = "swissprot"
 ```
 
 ```{r}
-#write genome gene_trans_map to file
-write.csv(sp, "..\\annotation\\genome_gene_trans_map.csv")
+#if ran DIAMOND with k > 1, use this chunk to eliminate extraneous info from accession name column
+sp
+sp$accession_id = unname(sapply(sp$accession_id, FUN = function(x){unlist(strsplit(x, "|", fixed = TRUE))[2]}))
+sp
 ```
 
+```{r}
+sp = sp[,c(1,2)]
+colnames(sp) = c("transcript_name", "accession_id")
+sp$origin = "swissprot"
+```
+
+```{r}
+ac = read.csv("..\\annotation\\uniprot_sprot_fish_ac.csv")[2]
+ac = ac$x
+ac
+```
+
+```{r}
+sp_filter = sp[sp$accession_id %in% ac,]
+sp_dup = !duplicated(sp_filter$transcript_name)
+sp_filter = sp_filter[sp_dup,]
+```
+
+
+```{r}
+#write genome accession_trans_map to file
+write.csv(sp_filter, "..\\annotation\\Zuri_oases_accession_trans_map_new.csv")
+```
 
 
 

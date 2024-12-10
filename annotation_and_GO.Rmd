@@ -2,9 +2,10 @@
 title: "R Notebook"
 output: html_notebook
 params:
-  gtm: "..\\annotation\\gene_trans_map.csv"
+  atm: "..\\annotation\\Zuri_oases_accession_trans_map_new.csv"
   de: "..\\data_analysis\\DE_lists\\CG_red_RvsC_P0.05C1_DE.csv"
-  output: "..\\annotation\\sw_gene_info.csv"
+  output: "..\\annotation\\Zuri_oases_gene_info_new.csv"
+  gtm: "..\\annotation\\Zuri_oases_gene_trans_map_new.csv"
 ---
 
 ```{r}
@@ -14,21 +15,21 @@ library(rbioapi)
 
 ```{r}
 #read in annotation, remove some unneeded columns and then get rid of duplicates
-gtm = unique(read.csv(params$gtm)[-c(1,2)])
+atm = unique(read.csv(params$atm)[-c(1,2)])
 ```
 
 ```{r}
 #read in deg list
 degs = read.csv(params$de)
-names(degs)[names(degs) == "X"] = "gene_name"
+names(degs)[names(degs) == "X"] = "accession_id"
 ```
 
 ```{r}
-#join gtm with degs to get origin info for degs
-degs = merge(degs, gtm)
+#join atm with degs to get origin info for degs
+degs = merge(degs, atm)
 
 #remove the "." and version number on each gene identifier for use with downstream tools
-degs$gene_name = sapply(strsplit(degs$gene_name, ".", fixed = TRUE), function(x) x[1])
+degs$accession_id = sapply(strsplit(degs$accession_id, ".", fixed = TRUE), function(x) x[1])
 
 degs_sw = subset(degs, degs$origin == "swissprot")
 degs_sw
@@ -38,20 +39,20 @@ degs_sw
 
 
 ```{r}
-assayed_genes = sapply(strsplit(gtm$gene_name, ".", fixed = TRUE), function(x) x[1])
-de_genes = sapply(strsplit(degs$gene_name, ".", fixed = TRUE), function(x) x[1])
+assayed_genes = sapply(strsplit(atm$accession_id, ".", fixed = TRUE), function(x) x[1])
+de_genes = sapply(strsplit(degs$accession_id, ".", fixed = TRUE), function(x) x[1])
 gene_vector = as.integer(assayed_genes %in% de_genes)
 names(gene_vector) = assayed_genes
 head(gene_vector)
 ```
 
 ```{r}
-sw_genes = subset(gtm, gtm$origin == "swissprot")
-sw_genes$gene_name = sapply(strsplit(sw_genes$gene_name, ".", fixed = TRUE), function(x) x[1])
+sw_genes = subset(atm, atm$origin == "swissprot")
+sw_genes$accession_id = sapply(strsplit(sw_genes$accession_id, ".", fixed = TRUE), function(x) x[1])
 ```
 
 ```{r}
-write.csv(sw_genes$gene_name, "C:\\Users\\Arie\\Desktop\\sw_genes.csv")
+write.csv(sw_genes$accession_id, "C:\\Users\\Arie\\Desktop\\sw_genes.csv")
 ```
 
 
@@ -67,7 +68,7 @@ import pandas
 import time
 import json
 
-ids = ",".join(r.sw_genes['gene_name'])
+ids = ",".join(r.sw_genes['accession_id'])
 
 response = requests.post('https://rest.uniprot.org/idmapping/run', data = {'ids': ids, 'from': 'UniProtKB_AC-ID', 'to': 'UniProtKB'})
 
@@ -129,10 +130,18 @@ print(sw_gene_info)
 ```{r}
 write.csv(py$sw_gene_info, params$output)
 ```
+```{r}
+temp = merge(atm, py$sw_gene_info, by.x = "accession_id", by.y = "accession_id")
+gtm = data.frame("transcript_name" = temp$transcript_name, "gene_name" = temp$gene_name, "origin" = temp$origin)
+to_clean = grepl(";", gtm$gene_name)
+gtm$gene_name[to_clean] = unname(sapply(gtm[to_clean,]$gene_name, function(x){unlist(strsplit(x, ";", fixed = TRUE))[1]}))
+gtm = gtm[-which(gtm$gene_name == ""),]
+write.csv(gtm, params$gtm)
+```
 
 
 ```{r}
-nr_genes = subset(gtm, gtm$origin == "nr")
+nr_genes = subset(atm, atm$origin == "nr")
 ```
 
 

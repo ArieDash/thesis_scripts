@@ -1,0 +1,80 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+
+
+
+```{r}
+cpm = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\Zuri_oases_limma_filtered_counts.csv")
+de = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_limma_TwovsEight_P0.1C0.1_full_table.csv")
+de$logP = -log10(de$P.Value)
+cpm
+de
+```
+
+```{r}
+curated = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Oases_alldatatable.csv")
+```
+
+```{r}
+info = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\annotation\\Zuri_oases_gene_info_new.csv")
+info = info[,c(2, 3, 14)]
+info
+```
+
+
+
+
+```{r}
+total = merge(cpm, de, all.x = TRUE)
+names(total)[names(total) == "X"] = "gene_name"
+total
+```
+
+```{r}
+#fin = merge(curated[,c(1,2)], info, by.y = "accession_id", by.x = "Uniprot")
+#fin
+```
+
+
+```{r}
+fin = merge(info, total, by.y = "gene_name", by.x = "gene_name")
+fin = fin[order(fin$P.Value),]
+fin
+write.csv(fin, "C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Zuri_oases_limma_TwovsEight_P0.1C0.1_DE_total_info.csv")
+```
+
+```{r}
+fin[duplicated(fin),]
+```
+
+
+```{r}
+missing = setdiff(cpm$X, curated$Uniprot)
+length(intersect(missing, de$X))
+```
+
+```{r}
+filter(curated, Uniprot %in% c("O73824", "Q3UR50", "Q90460", "Q08478", "Q91119", "Q91Z96", "O93566", "Q91120", "C0H9B6", "Q6UXG2", "Q9YGK2"))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

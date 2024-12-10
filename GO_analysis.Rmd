@@ -71,7 +71,6 @@ head(gene_vector)
 ```{r}
 #read in count and length data
 counts = read.csv(params$counts)
-counts$X = sapply(strsplit(counts$X, ".", fixed = TRUE), function(x) x[1])
 #set rownames to gene names
 rownames(counts) = counts$X
 #remove gene names column
@@ -102,7 +101,7 @@ def extract_go(go_strs):
 #read in annotation info
 gene_info = read.csv(params$info)
 #only keep id and GO columns
-gene_info = gene_info[,c("accession_id", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
+gene_info = gene_info[,c("gene_name", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
 
 #process GO columns to only keep GO identifiers. We do this in python because it is much more efficient and significantly easier there because we can use complex list comprehensions
 gene_info$go.molecular_function. = py$extract_go(gene_info$go.molecular_function.)
@@ -111,7 +110,7 @@ gene_info$go.cellular_component. = py$extract_go(gene_info$go.cellular_component
 
 #create named list in correct format for goseq by combining all go terms for each gene into a single vector
 gene2cat = apply(gene_info[,-1], 1, function(x) unlist(x, use.names = FALSE))
-names(gene2cat) = gene_info$accession_id
+names(gene2cat) = gene_info$gene_name
 
 ```
 
@@ -133,10 +132,39 @@ go_terms = subset(go, go$numDEInCat > 3)
 go = subset(go, go$numDEInCat > 3)
 go$over_represented_pvalue = p.adjust(go$over_represented_pvalue, method = "fdr")
 go$under_represented_pvalue = p.adjust(go$under_represented_pvalue, method = "fdr")
+
+#go_terms$over_represented_qvalue = p.adjust(go_terms$over_represented_pvalue, method = "fdr")
+#go_terms$under_represented_qvalue = p.adjust(go_terms$under_represented_pvalue, method = "fdr")
+#write.csv(go_terms, paste0(params$listout, "GO_list.csv"))
+
 go = subset(go, go$over_represented_pvalue <= 0.05 | go$under_represented_pvalue <= 0.05)
 go
 go_terms
 ```
+
+```{r}
+test_by_ont = function(pwf, gene2cat, test.cats, method = "Wallenius"){
+  
+  ontology = unlist(strsplit(test.cats, ":"))[2]
+  
+  res = goseq(pwf = pwf, gene2cat = gene2cat, test.cats = test.cats, method = method)
+  res$over_represented_qvalue = p.adjust(res$over_represented_pvalue, method = "fdr")
+  res$under_represented_qvalue = p.adjust(res$under_represented_pvalue, method = "fdr")
+  write.csv(res, paste0(params$listout, ontology, "_total_GO_list.csv"))
+  
+  res = subset(res, res$over_represented_qvalue <= 0.05 | res$under_represented_qvalue <= 0.05)
+  
+  write.csv(res, paste0(params$listout, ontology, "_sig_GO_list.csv"))
+}
+```
+
+```{r}
+onts = c("GO:CC", "GO:BP", "GO:MF")
+for(ont in onts){
+  test_by_ont(pwf, gene2cat, ont)
+}
+```
+
 
 ```{r}
 gen_intercept = function(df){
@@ -159,7 +187,7 @@ if(params$kegg){
   gene_info = read.csv(params$info)
   #only keep id and KEGG columns
   #Ok to keep as a dataframe because it is a one to one mapping
-  gene2cat = gene_info[,c("accession_id", "path_desc")]
+  gene2cat = gene_info[,c("gene_name", "path_desc")]
   
   go_kegg = goseq(pwf = pwf, gene2cat = gene2cat, method = "Wallenius")
   go_kegg = subset(go_kegg, go_kegg$numDEInCat > 3)
@@ -333,7 +361,7 @@ if(nrow(MF_sig_terms) > 0){
   ggsave(paste0(params$baseout, "sig_MF.png"), width = 8, height = 11, units = "in")
   
   #write out sig list
-  write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
+  #write.csv(MF_sig_terms, paste0(params$listout, "MF_sig_GO_list.csv"))
 }
 ```
 
@@ -360,7 +388,7 @@ if(nrow(BP_sig_terms) > 0){
 
   ggsave(paste0(params$baseout, "sig_BP.png"), width = 8, height = 11, units = "in")
   
-  write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
+  #write.csv(BP_sig_terms, paste0(params$listout, "BP_sig_GO_list.csv"))
 }
 ```
 
@@ -387,7 +415,7 @@ if(nrow(CC_sig_terms) > 0){
 
   ggsave(paste0(params$baseout, "sig_CC.png"), width = 8, height = 11, units = "in")
   
-  write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
+  #write.csv(CC_sig_terms, paste0(params$listout, "CC_sig_GO_list.csv"))
 }
 ```
 

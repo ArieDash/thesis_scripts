@@ -2,3 +2,5 @@
 *.pdf
 .RData
 .Rhistory
+*.png
+*.txt
