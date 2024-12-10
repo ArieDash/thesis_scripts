@@ -59,27 +59,45 @@ data = cbind(traits, counts)
 ```
 
 ```{r}
-#conditions = data[,1:length(traits)]
-conditions = data[,1:3]
+conditions = data[,4:length(traits)]
 expr = data[,(length(traits)+1):length(data)]
+conditions
 ```
 
 
 ```{r}
+
 #decide which distance measure to use. This examines rank correlations (spearman) between dissimilarity indices and gradient separation. Higher numbers are better
 rankindex(conditions, expr, indices = c("euc", "man", "gow", "bra","kul"), stepacross = FALSE, method = "spearman")
 ```
-Use Gower's distance (it has the highest value and is godd or mixed categorical and continuous data).
+Use Gower's distance (it has the highest value and is good for mixed categorical and continuous data).
 
 ```{r}
-#dbRDA = dbrda(expr~Control+Relaxation+Upwelling+SMR+MMR+Aerobic_scope_abs+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
-dbRDA = dbrda(expr~Control+Upwelling+Relaxation, conditions, dist = "gow", na.action = na.exclude)
+cols = c("green", "blue", "red")
+#need to exclude ventilation_avg_bpm from gill because one of the samples is missing data for that parameter and there aren't enough samples to continue the analysis without it
+if(params$regex == "CG"){
+  dbRDA = dbrda(expr~SMR+MMR+Aerobic_scope_fac+Ucrit_relative, conditions, dist = "gow", na.action = na.exclude)
+} else{
+  dbRDA = dbrda(expr~SMR+MMR+Aerobic_scope_fac+Ucrit_relative+Vent_avg_bpm, conditions, dist = "gow", na.action = na.exclude)
+}
+
 dbRDA
+#positions of samples
+sam_pos = scores(dbRDA, display = "sites")
+#percent explained by first two axes
+perc = round(100*(summary(dbRDA)$cont$importance[2, 1:2]), 2)
 #if any condition variables don't show up in plot, it is because they were aliased and are linearly dependent on another variable
-#png(paste0(params$outfile, "_dbrda_plot.png"), width = 700)
-plot(dbRDA)
-#dev.off
+png(paste0(params$outfile, "_dbrda_plot.png"), width = 700)
+
+plot(dbRDA, type = "n", xlab = paste0("dbRDA1 (", perc[1], "%)"), ylab = paste0("dbRDA2 (", perc[2], "%)"))
+points(sam_pos, pch = 21, bg = cols[as.factor(samples$Treatment)])
+text(dbRDA, col = "blue", display = "bp")
+text(sam_pos+c(rep(0,times = nrow(sam_pos)),rep(0.05,times = nrow(sam_pos))), row.names(sam_pos))
+legend("bottomright", c("Control", "Relaxation", "Upwelling"), pch = 21, pt.bg = cols[unique(as.factor(samples$Treatment))], bty = "n", inset = 0.05)
+
+dev.off
 ```
+
 
 ```{r}
 #test for significance
@@ -98,14 +116,6 @@ cat("\n\n----PHYSIOLOGICAL VARIABLES SIGNIFICANCE----\n", file = f, append = TRU
 capture.output(anova(dbRDA, by = "terms", permu = 200), file = f, append = TRUE) #test for significant physiological variables
 
 ```
-
-
-
-
-
-
-
-
 
 
 
