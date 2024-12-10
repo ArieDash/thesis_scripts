@@ -644,7 +644,7 @@ tissues = c()
 tissues = append(tissues, "CB")
 tissues = append(tissues, "CG")
 tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CL")
 
 genome = "genome_"
 #genome = ""
@@ -883,12 +883,12 @@ types = append(types, "red")
 tissues = c()
 
 tissues = append(tissues, "CB")
-tissues = append(tissues, "CG") # sample size is too small for this tissue in red dataset, so exclude. Otherwise would be overparameterized (# of traits > # samples), so no residuals and can't do statistical analysis
+tissues = append(tissues, "CG") # ventilation_avg_bpm excluded here because one sample is missing data for this parameter and the sample size is too small to continue without it
 tissues = append(tissues, "CM")
 tissues = append(tissues, "CL")
 
-#genome = "genome_"
-genome = ""
+genome = "genome_"
+#genome = ""
 
 for(regex in tissues){
   for(type in types){
