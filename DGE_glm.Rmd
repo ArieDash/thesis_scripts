@@ -198,8 +198,7 @@ col_anno = data.frame(treatment = samples$Treatment)
 rownames(col_anno) = samples$Name
 
 #define annotation colors for each treatment
-#anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
-anno_color_opts = c(Eight = "#00d65c", Four = "#82b7ff", Two = "#ff9289")
+anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
 
 #generate vector of treatments in samples file
 treatments = unique(samples$Treatment)
@@ -214,7 +213,11 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 
 ```{r}
 #make contrasts
-contrasts = makeContrasts(TwovsEight=Two-Eight, levels = design)
+if("E" %in% samples$Treatment){
+  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, FvsS=(U+R)/2-(C+E+M)/3, levels = design)
+} else{
+  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
+}
 ```
 
 
@@ -233,8 +236,7 @@ volcano_plot = function(FC, FDR, xlab = "logFC", ylab = "-1*log10(FDR)", main="V
 ```{r}
 gg_volcano_plot = function(tt, xlab = "logFC", ylab = "-1*log10(FDR)", main="Volcano plot", add_labels = TRUE){
   tt$dir = ifelse(tt$logFC<=0, "down", "up")
-  #tt$size = abs(tt$logFC)*(-log10(tt$FDR))
-  tt$size = abs(tt$logFC)*(-log10(tt$PValue))
+  tt$size = abs(tt$logFC)*(-log10(tt$FDR))
   tt$gene_name = rownames(tt)
   limit = max(abs(ceiling(max(tt$logFC))), abs(floor(min(tt$logFC))))
   ret = ggplot(tt, aes(x = logFC, y = -log10(FDR))) + geom_point(aes(size = size, color = dir)) + scale_color_manual(values = c("up" = "red", "down" = "blue")) + xlim(-limit, limit) + xlab(xlab) + ylab(ylab) + ggtitle(main) + scale_size_area() + theme_bw() + theme(panel.border = element_blank(), panel.grid.minor = element_blank(), panel.grid.major = element_blank(), axis.line = element_line()) + theme(legend.position="none")
@@ -302,7 +304,6 @@ run_test = function(fit, contrast){
   
   #add column that indicates if gene is significantly differentially expressed or not
   tt$threshold = tt$FDR < params$p & abs(tt$logFC) > params$lfc
-  tt$thresholdp = tt$PValue < params$p & abs(tt$logFC) > params$lfc
   
   #Fancy volcano plot
   ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced.pdf"), plot = gg_volcano_plot(tt))
@@ -312,7 +313,7 @@ run_test = function(fit, contrast){
   write.csv(tt, paste0(params$deg_out, contrast, "_P", params$p, "C", params$lfc, "_full_table.csv"))
   
   #return names of genes that are significantly differentially expressed
-  return(list(subset(tt, threshold == TRUE)[,-ncol(tt)], subset(tt, thresholdp == TRUE)[,-ncol(tt)]))
+  return(subset(tt, threshold == TRUE)[,-ncol(tt)])
 
 }
 ```
