@@ -25,19 +25,24 @@ types = c()
 #types = append(types, "no_batch")
 #types = append(types, "batch")
 #types = append(types, "red")
-types = append(types, "class")
+#types = append(types, "class")
 #types = append(types, "ONT")
+types = append(types, "blue")
 
 #Regex of samples names we want to keep
 tissues = c()
 
 #tissues = append(tissues, "CB")
 #tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
+#tissues = append(tissues, "CM")
 #tissues = append(tissues, "CL")
 
-genome = TRUE
-#genome = FALSE
+tissues = append(tissues, "CG")
+tissues = append(tissues, "GG")
+tissues = append(tissues, "BG")
+
+#genome = TRUE
+genome = FALSE
 
 #install tximport?
 install = 0
@@ -61,17 +66,17 @@ for(regex in tissues){
       #file to write csv to
       out = paste0("..\\data_analysis\\", regex, "_", type, "_txi.csv")
       
-      samples_location = "..\\mapping"
+      samples_location = "..\\mapping\\multi_species_gill"
       
       #location of gene_trans_map
-      gtm = "..\\annotation\\gene_trans_map.csv"
+      gtm = "..\\annotation\\gill_meta_accession_trans_map_new.csv"
       
       #ignore . in transcript name
       txversion = TRUE
     }
     
     #names of file with salmon output folders
-    input_samples = input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
+    input_samples = paste0("..\\data_analysis\\samples_", type, ".csv")
 
     rmarkdown::render(input = "tximport.Rmd", params = list(out = out, gtm = gtm, samples_location = samples_location, input_samples = input_samples, regex = regex, txversion = txversion))
 
@@ -108,21 +113,27 @@ types = c()
 #types = append(types, "all")
 #types = append(types, "no_batch")
 #types = append(types, "batch")
-types = append(types, "red")
+#types = append(types, "red")
 #types = append(types, "corrected")
 #types = append(types, "class")
-#types = append(types, "ONT") 
+#types = append(types, "ONT")
+
+types = append(types, "blue")
  
 #Regex of samples names we want to keep
 tissues = c()
 
-tissues = append(tissues, "CB")
-tissues = append(tissues, "CG")
-tissues = append(tissues, "CM")
-tissues = append(tissues, "CL")
+#tissues = append(tissues, "CB")
+#tissues = append(tissues, "CG")
+#tissues = append(tissues, "CM")
+#tissues = append(tissues, "CL")
 
-genome = "genome_"
-#genome = ""
+tissues = append(tissues, "CG")
+tissues = append(tissues, "GG")
+tissues = append(tissues, "BG")
+
+#genome = "genome_"
+genome = ""
 
 #if we want to install the package. Set to 1 to install
 install = 0

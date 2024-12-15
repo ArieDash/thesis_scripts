@@ -27,12 +27,20 @@ if(params$install == 1){
 library(tximport)
 ```
 
+```{r}
+samples = read.csv("..\\data_analysis\\samples_blue.csv")
+```
+
+```{r}
+samples[grepl("CG", samples$Name),]
+```
+
 
 ```{r}
 #read in samples and select the ones we want
 samples = read.csv(params$input_samples)
+samples = samples[grepl(params$regex, samples$Name),]
 samples = samples$Name
-samples
 ```
 
 

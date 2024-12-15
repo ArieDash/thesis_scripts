@@ -54,6 +54,7 @@ if(!dir.exists(image_dir)){
 ```{r}
 #read in samples and select the ones we want
 samples = read.csv(params$input_samples)
+samples = samples[grepl(params$regex, samples$Name),]
 samples
 ```
 
@@ -106,14 +107,6 @@ y <- scaleOffset(y, normMat)
 # filtering using the design information
 keep = filterByExpr(y, group = group, min.count = 10, min.prop=0.8)
 y <- y[keep, ]
-```
-
-```{r}
-#remove genes flagged later in analysis as problematic
-curated = read.csv("C:\\Users\\redas\\Documents\\MLML_Class_Materials\\Logan_Lab\\Thesis_data\\data_analysis\\DE_lists\\Oases_alldatatable.csv")
-keep_new = which(rownames(y$counts) %in% intersect(rownames(y$counts), curated$Uniprot))
-y <- y[keep_new, ]
-length(rownames(y$counts))
 ```
 
 
@@ -214,7 +207,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 ```{r}
 #make contrasts
 if("E" %in% samples$Treatment){
-  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, FvsS=(U+R)/2-(C+E+M)/3, levels = design)
+  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, levels = design)
 } else{
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
 }
@@ -430,9 +423,10 @@ fit = glmFit(y, design, robust = TRUE)
 #Test for DEG between any two groups
 
 #define annotation colors for each treatment for heatmaps
-anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289")
+anno_color_opts = c(C = "#00d65c",  R = "#82b7ff", U = "#ff9289", E = "darkorange3", M = "darkorchid3")
 
-tests = c("UvsC", "RvsC", "UvsR")
+#tests = c("UvsC", "RvsC", "UvsR")
+tests = colnames(contrasts)
 
 #parameters to use for subsequent tests
 sig_genes = c()
@@ -501,22 +495,24 @@ dev.off()
 if("E" %in% samples$Treatment){
   
   ##UvsE
-  sig_genes_UE = run_test(fit, "UvsE")
+#  sig_genes_UE = run_test(fit, "UvsE")
   
   #add options to annotation colors
-  anno_color_opts = c(anno_color_opts, E = "thistle1")
+#  anno_color_opts = c(anno_color_opts, E = "thistle1")
   
-  anno_color = list(treatment = anno_color_opts[c("U","E")])
+#  anno_color = list(treatment = anno_color_opts[c("U","E")])
   
-  samples_comp = subset(samples, Treatment == "U" | Treatment == "E")
+#  samples_comp = subset(samples, Treatment == "U" | Treatment == "E")
 
-  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UE), main = "UvsE significant DEG heatmap", color = cols, annotation_color = anno_color)
+#  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes_UE), main = "UvsE significant DEG heatmap", color = cols, annotation_color = anno_color)
   
   #save significant DEGs to file
-  write_sig_genes(sig_genes_UE, "UvsE")
+#  write_sig_genes(sig_genes_UE, "UvsE")
   
   
   ##FvsS
+  contrasts = makeContrasts(FvsS=(U+R)/2-(C+E+M)/3, levels = design)
+
   sig_genes_FS = run_test(fit, "FvsS")
 
   #rename samples so that treatments are either fluctuating or static
@@ -528,8 +524,10 @@ if("E" %in% samples$Treatment){
   
   anno_color = list(treatment = anno_color_opts[c("Fl","S")])
   
-  #make heatmap
-  make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes_FS), main = "FvsS DEG heatmap", color = cols, annotation_color = anno_color)
+  #make heatmap if more than 1 DEG
+  if(nrow(sig_genes_FS) > 1){
+    make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes_FS), main = "FvsS DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "FvsS_deg_heatmap.png"))
+  }
   
   #save significant DEGs to file
   write_sig_genes(sig_genes_FS, "FvsS")
