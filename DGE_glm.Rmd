@@ -207,7 +207,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 ```{r}
 #make contrasts
 if("E" %in% samples$Treatment){
-  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, levels = design)
+  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, UvsM=U-M, RvsM=R-M, MvsC=M-C, levels = design)
 } else{
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
 }
@@ -248,6 +248,7 @@ make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_c
   
   #subset matrix to include only significantly differentially expressed genes for the desired samples
   sig_cpm = cpms[rownames(cpms) %in% sig_genes, colnames(cpms) %in% samples_comp$Name]
+
   #make dataframe to indicate which samples were in which treatment for heatmap
   col_anno = data.frame(treatment = samples_comp$Treatment)
   rownames(col_anno) = samples_comp$Name
@@ -406,7 +407,7 @@ calc_deg = function(fit, test, anno_color_opts, color){
 
     make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.png"))
   
-    make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
+    make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
   
   }
   
@@ -437,35 +438,33 @@ sig_list_down = c()
 
 for(test in tests){
   res = calc_deg(fit, test, anno_color_opts, cols)
-  sig_genes = unique(sig_genes, rownames(res))
+  sig_genes = unique(c(sig_genes, rownames(res)))
   sig_genes_shared = intersect(sig_genes, rownames(res))
   sig_list[[test]] = rownames(res)
   sig_list_up[[test]] = rownames(subset(res, logFC > 0))
   sig_list_down[[test]] = rownames(subset(res, logFC < 0))
 }
 
-make_heatmap(cpms = cpms, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
+make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
 
 #de_df = data.frame(comps = c(rep("UvsC", nrow(sig_genes_UC)),rep("RvsC", nrow(sig_genes_RC)),rep("UvsR", nrow(sig_genes_UR))), genes = c(rownames(sig_genes_UC),rownames(sig_genes_RC),rownames(sig_genes_UR)))
 
 #chord(de_df)
 ```
 
+
 ```{r}
 #make heatmap of significant genes shared across all treatments
 
 #only do this if there are shared DE genes
-if(length(sig_genes_shared) > 0){
-  samples_comp = subset(samples, Treatment == "U" | Treatment == "R" | Treatment == "C")
-
+if(length(sig_genes_shared) > 1){
   
   anno_color = list(treatment = anno_color_opts)
 
-  make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = sig_genes_shared, main = "shared DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "shared_deg_heatmap.png"))
+  make_heatmap(cpms = cpms, samples_comp = samples, sig_genes = sig_genes_shared, main = "shared DEG heatmap", color = cols, annotation_color = anno_color, filename = paste0(params$image_out, "shared_deg_heatmap.png"))
 
 }
 ```
-
 
 ```{r}
 #Venn diagrams of all DEGs

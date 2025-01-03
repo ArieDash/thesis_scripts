@@ -40,6 +40,8 @@ tissues = c()
 tissues = append(tissues, "CG")
 tissues = append(tissues, "GG")
 tissues = append(tissues, "BG")
+#all samples
+tissues = append(tissues, "G")
 
 #genome = TRUE
 genome = FALSE
@@ -131,6 +133,9 @@ tissues = c()
 tissues = append(tissues, "CG")
 tissues = append(tissues, "GG")
 tissues = append(tissues, "BG")
+
+#all samples
+#tissues = append(tissues, "G")
 
 #genome = "genome_"
 genome = ""
