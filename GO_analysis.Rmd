@@ -2,12 +2,12 @@
 title: "GO analysis"
 output: html_notebook
 params:
-  gtm: ""
-  de: ""
-  counts: ""
-  info: ""
-  baseout : ""
-  listout : ""
+  gtm: "..\\annotation\\gill_meta_accession_trans_map_new.csv"
+  de: "..\\data_analysis\\DE_lists\\CG_blue_UvsC_P0.05C1_DE.csv"
+  counts: "..\\data_analysis\\CG_blue_txi.csv"
+  info: "..\\annotation\\gill_meta_gene_info.csv"
+  baseout : "..\\data_analysis\\images\\CG_blue\\CG_blue_UvsC_DE_"
+  listout : "..\\data_analysis\\GO_lists\\CG_blue_UvsC_P0.05C1_DE_"
   kegg : 0
 ---
 
@@ -51,7 +51,7 @@ gtm = subset(gtm, gtm$origin == "swissprot")
 ```{r}
 #read in deg list
 degs = read.csv(params$de)
-names(degs)[names(degs) == "X"] = "gene_name"
+names(degs)[names(degs) == "X"] = "accession_id"
 #join gtm with degs to get swissprot degs
 degs = merge(degs, gtm)
 ```
@@ -59,8 +59,8 @@ degs = merge(degs, gtm)
 
 ```{r}
 
-assayed_genes = gtm$gene_name
-de_genes = degs$gene_name
+assayed_genes = gtm$accession_id
+de_genes = degs$accession_id
 
 gene_vector = as.integer(assayed_genes %in% de_genes)
 names(gene_vector) = assayed_genes
@@ -82,7 +82,7 @@ ave_len = apply(counts, 1, mean)
 
 #need to keep only swissprot genes
 #We do this step now because it is much more efficient once we have relatively small vectors than trying to merge two large dataframes at the start of this chunk
-ave_len = ave_len[names(ave_len) %in% gtm$gene_name]
+ave_len = ave_len[names(ave_len) %in% gtm$accession_id]
 ```
 
 ```{r}
@@ -101,7 +101,7 @@ def extract_go(go_strs):
 #read in annotation info
 gene_info = read.csv(params$info)
 #only keep id and GO columns
-gene_info = gene_info[,c("gene_name", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
+gene_info = gene_info[,c("accession_id", "go.molecular_function.", "go.biological_process.", "go.cellular_component.")]
 
 #process GO columns to only keep GO identifiers. We do this in python because it is much more efficient and significantly easier there because we can use complex list comprehensions
 gene_info$go.molecular_function. = py$extract_go(gene_info$go.molecular_function.)
@@ -110,7 +110,7 @@ gene_info$go.cellular_component. = py$extract_go(gene_info$go.cellular_component
 
 #create named list in correct format for goseq by combining all go terms for each gene into a single vector
 gene2cat = apply(gene_info[,-1], 1, function(x) unlist(x, use.names = FALSE))
-names(gene2cat) = gene_info$gene_name
+names(gene2cat) = gene_info$accession_id
 
 ```
 
