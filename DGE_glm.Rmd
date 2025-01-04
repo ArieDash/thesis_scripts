@@ -8,7 +8,7 @@ params:
   input_counts: ""
   install: 0
   p : 0.05
-  lfc : 0.1
+  lfc : 1
   counts_out : ""
   deg_out : ""
   image_out : ""
