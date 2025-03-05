@@ -207,7 +207,7 @@ pheatmap(cpms, cluster_rows = T, scale = "row", border_color = NA, show_rownames
 ```{r}
 #make contrasts
 if("E" %in% samples$Treatment){
-  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, UvsM=U-M, RvsM=R-M, MvsC=M-C, levels = design)
+  contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, UvsE=U-E, UvsM=U-M, RvsM=R-M, MvsC=M-C, EvsC=E-C, EvsM=E-M, EvsR=E-R, levels = design)
 } else{
   contrasts = makeContrasts(UvsC=U-C, RvsC=R-C, UvsR=U-R, levels = design)
 }

@@ -130,12 +130,12 @@ tissues = c()
 #tissues = append(tissues, "CM")
 #tissues = append(tissues, "CL")
 
-#tissues = append(tissues, "CG")
-#tissues = append(tissues, "GG")
-#tissues = append(tissues, "BG")
+tissues = append(tissues, "CG")
+tissues = append(tissues, "GG")
+tissues = append(tissues, "BG")
 
 #all samples
-tissues = append(tissues, "G")
+#tissues = append(tissues, "G")
 
 #genome = "genome_"
 genome = ""
@@ -293,15 +293,19 @@ c = 1
 #treatment contrasts to analyze
 comparisons = c()
 
-comparisons = append(comparisons, "UvsC")
-comparisons = append(comparisons, "RvsC")
-comparisons = append(comparisons, "UvsR")
+#comparisons = append(comparisons, "UvsC")
+#comparisons = append(comparisons, "RvsC")
+#comparisons = append(comparisons, "UvsR")
 
-comparisons = append(comparisons, "UvsE")
-comparisons = append(comparisons, "UvsM")
-comparisons = append(comparisons, "RvsM")
-comparisons = append(comparisons, "MvsC")
-comparisons = append(comparisons, "FvsS")
+#comparisons = append(comparisons, "UvsE")
+#comparisons = append(comparisons, "UvsM")
+#comparisons = append(comparisons, "RvsM")
+#comparisons = append(comparisons, "MvsC")
+#comparisons = append(comparisons, "FvsS")
+
+comparisons = append(comparisons, "EvsC")
+comparisons = append(comparisons, "EvsM")
+comparisons = append(comparisons, "EvsR")
 
 directions = c()
 
