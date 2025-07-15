@@ -1,0 +1,202 @@
+---
+title: "R Notebook"
+output: html_notebook
+params:
+  de_lists: ""
+  counts: "..\\data_analysis\\GG_blue_filtered_cpm.csv"
+  samples: "..\\data_analysis\\samples_blue.csv"
+  regex: "GG"
+  base_out: "..\\data_analysis\\PERMANOVA\\GG_blue_"
+---
+
+
+```{r}
+library(vegan)
+```
+
+
+```{r}
+#read in and combine DE lists
+des = data.frame()
+for(de in params$de_lists){
+  temp = read.csv(de)
+  comp = unlist(strsplit(de, "_"))[5]
+  temp$contrast = comp
+  des = rbind(des, temp)
+}
+```
+
+
+```{r}
+#testing only
+des = data.frame()
+de_lists = c("..\\data_analysis\\DE_lists\\BG_blue_EvsR_P0.05C1_DE.csv", "..\\data_analysis\\DE_lists\\BG_blue_EvsC_P0.05C1_DE.csv", "..\\data_analysis\\DE_lists\\BG_blue_UvsE_P0.05C1_DE.csv", "..\\data_analysis\\DE_lists\\BG_blue_UvsR_P0.05C1_DE.csv", "..\\data_analysis\\DE_lists\\BG_blue_RvsC_P0.05C1_DE.csv", "..\\data_analysis\\DE_lists\\BG_blue_UvsC_P0.05C1_DE.csv")
+de_lists = unlist(lapply(de_lists, function(x){gsub("BG", params$regex, x)}))
+for(de in de_lists){
+  temp = read.csv(de)
+  if(nrow(temp) > 0){
+    comp = unlist(strsplit(de, "_"))[5]
+    temp$contrast = comp
+    des = rbind(des, temp)
+  }
+}
+des = des[, c(1, 7)]
+colnames(des) = c("accession_id", "contrast")
+des
+```
+
+```{r}
+samples = read.csv(params$samples)
+samples = samples[grepl(params$regex, samples$Name),]
+samples
+```
+
+
+```{r}
+#read in counts and log2 transform
+counts = read.csv(params$counts)
+colnames(counts)[1] = "accession_id"
+keep = counts$accession_id %in% des$accession_id
+counts = counts[keep,]
+rownames(counts) = counts$accession_id
+counts = counts[,-1]
+counts = log2(counts+1)
+#counts = rapply(counts, f = function(x){log2(x+1)}, classes = c("numeric", "integer"), how = "replace")
+counts
+```
+
+```{r}
+#exclude samples from counts and transpose
+counts = counts[,-grep("M", samples$Treatment)]
+counts = t(counts)
+```
+
+```{r}
+#also remove from samples
+samples = samples[!grepl("M", samples$Treatment),]
+samples
+```
+
+```{r}
+method = "manhattan"
+```
+
+
+```{r}
+#MDS scaling of counts
+dist_matrix = dist(counts, method = method)
+wcmds = wcmdscale(dist_matrix)
+wcmds
+```
+```{r}
+#function to convert PERMANOVA output to dataframe
+format_results = function(permanova_result){
+  results_df <- data.frame(
+    Source = c("Model", "Residual", "Total"),
+    Df = c(permanova_result$Df[1], permanova_result$Df[2], sum(permanova_result$Df)),
+    SumOfSqs = c(permanova_result$SumOfSqs[1], permanova_result$SumOfSqs[2], sum(permanova_result$SumOfSqs)),
+    R2 = c(permanova_result$R2[1], permanova_result$R2[2], sum(permanova_result$R2)),
+    F_statistic = c(permanova_result$F[1], NA, NA),
+    P_value = c(permanova_result$`Pr(>F)`[1], NA, NA)
+  )
+  return(results_df)
+}
+```
+
+```{r}
+#PERMANOVA
+perm_treat = adonis2(wcmds~Treatment, data = samples, permutations = 1000000, method = method)
+perm_treat
+write.csv(format_results(perm_treat), paste0(params$base_out, "PERMANOVA_all_treatments.csv"), row.names = FALSE)
+```
+
+
+```{r}
+# Function for pairwise PERMANOVA
+pairwise_permanova <- function(dist_matrix, grouping, p_adjust_method = "fdr") {
+  groups <- unique(grouping)
+  n_groups <- length(groups)
+  
+  # Create results matrix
+  results <- data.frame(
+    group1 = character(),
+    group2 = character(),
+    F_stat = numeric(),
+    p_value = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  # Compare all pairs
+  for(i in 1:(n_groups-1)) {
+    for(j in (i+1):n_groups) {
+      # Subset for this comparison
+      idx <- grouping %in% c(groups[i], groups[j])
+      sub_dist <- as.dist(as.matrix(dist_matrix)[idx, idx])
+      sub_group <- grouping[idx]
+      
+      # Run PERMANOVA
+      test_result <- adonis2(sub_dist ~ sub_group, permutations = 1000000, method = method)
+      
+      # Store results
+      results <- rbind(results, data.frame(
+        group1 = groups[i],
+        group2 = groups[j],
+        F_stat = test_result$F[1],
+        p_value = test_result$`Pr(>F)`[1]
+      ))
+    }
+  }
+  
+  # Apply multiple testing correction
+  results$p_adjusted <- p.adjust(results$p_value, method = p_adjust_method)
+  
+  return(results)
+}
+
+# Use the function
+posthoc_results <- pairwise_permanova(dist_matrix, samples$Treatment)
+print(posthoc_results)
+write.csv(posthoc_results, paste0(params$base_out, "PERMANOVA_pairwise_treatments.csv"))
+
+# Show only significant comparisons
+significant <- posthoc_results[posthoc_results$p_adjusted < 0.05, ]
+print("Significant pairwise comparisons:")
+print(significant)
+```
+
+
+```{r}
+#run test with FvsS
+samples_FvsS = ifelse(samples$Treatment == "U" | samples$Treatment == "R", "F", "S")
+samples_FvsS = data.frame(cbind(samples$Name, samples_FvsS))
+colnames(samples_FvsS) = c("Name", "Treatment")
+samples_FvsS
+```
+
+```{r}
+#PERMANOVA test on FvsS
+perm_fluc = adonis2(wcmds~Treatment, data = samples_FvsS, permutations = 1000000, method = method)
+perm_fluc
+write.csv(format_results(perm_fluc), paste0(params$base_out, "PERMANOVA_FvsS.csv"), row.names = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
