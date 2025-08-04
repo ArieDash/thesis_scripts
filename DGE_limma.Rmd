@@ -10,7 +10,7 @@ params:
   lfc : 0.1
   counts_out : "..\\data_analysis\\Zuri_oases_limma"
   deg_out : "..\\data_analysis\\DE_lists\\Zuri_oases_limma_"
-  image_out : "..\\data_analysis\\images\\Zuri_oases\\Zuri_oases_limma_"
+  image_out : "..\\data_analysis\\images\\Zuri_oases_limma\\Zuri_oases_limma_"
   base_out: "..\\data_analysis\\"
 ---
 
@@ -82,6 +82,7 @@ y = voom(y, design, plot = TRUE)
 write.csv(y$E, paste0(params$counts_out, "_filtered_counts.csv"))
 ```
 
+
 ```{r}
 #make contrasts
 contrasts = makeContrasts(TwovsEight=Two-Eight, levels = design)
@@ -135,6 +136,7 @@ run_test = function(fit, contrast){
   #add column that indicates if gene is significantly differentially expressed or not
   tt$threshold = tt$adj.P.Val < params$p & abs(tt$logFC) > params$lfc
   tt$thresholdp = tt$P.Value < params$p & abs(tt$logFC) > params$lfc
+  
   
   #Fancy volcano plot
   ggsave(paste0(params$image_out, contrast, "_volcano_plot_enhanced.pdf"), plot = gg_volcano_plot(tt))
@@ -223,9 +225,6 @@ for(test in tests){
 make_heatmap(cpms = y$E, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
 
 ```
-
-
-
 
 
 
