@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+params:
+  image_out : "..\\data_analysis\\images\\Zuri_oases_limma\\Zuri_oases_limma_"
+  info_fish : "..\\annotation\\Zuri_oases_gene_info_new.csv"
+  info : "..\\annotation\\Zuri_oases_gene_info.csv"
+  fish_gtm : "..\\annotation\\Zuri_oases_accession_trans_map_new.csv"
+  gtm : "..\\annotation\\Zuri_oases_gene_trans_map.csv"
+---
+
+```{r}
+library(ggplot2)
+library(scales)
+library(stringr)
+```
+
+
+```{r}
+fisho = read.csv(params$info_fish)
+tot = read.csv(params$info)
+fisho = fisho[,c("accession_id", "gene_name", "organism")]
+tot = tot[,c("accession_id", "gene_name", "organism")]
+```
+
+
+```{r}
+fisho_group = aggregate(accession_id ~ organism, fisho, FUN=length)
+tot_group = aggregate(accession_id ~ organism, tot, FUN=length)
+fisho_group = fisho_group[order(fisho_group$accession_id, decreasing = TRUE),][1:10,]
+tot_group = tot_group[order(tot_group$accession_id, decreasing = TRUE),][1:10,]
+fisho_group$organism = factor(fisho_group$organism, levels = fisho_group$organism)
+tot_group$organism = factor(tot_group$organism, levels = tot_group$organism)
+```
+
+```{r}
+fish_gtm = read.csv(params$fish_gtm)
+tot_gtm = read.csv(params$gtm)
+tot_gtm
+```
+
+
+```{r}
+fisho_trans = merge(fish_gtm, fisho, by = "accession_id")
+tot_trans = merge(tot_gtm, tot, by.x = "gene_name", by.y = "accession_id")
+tot_trans
+```
+
+```{r}
+fisho_trans_group = aggregate(transcript_name ~ organism, fisho_trans, FUN=length)
+tot_trans_group = aggregate(transcript_name ~ organism, tot_trans, FUN=length)
+fisho_trans_group = fisho_trans_group[order(fisho_trans_group$transcript_name, decreasing = TRUE),][1:10,]
+tot_trans_group = tot_trans_group[order(tot_trans_group$transcript_name, decreasing = TRUE),][1:10,]
+fisho_trans_group$organism = factor(fisho_trans_group$organism, levels = fisho_trans_group$organism)
+tot_trans_group$organism = factor(tot_trans_group$organism, levels = tot_trans_group$organism)
+```
+
+
+
+```{r}
+plot_bar = function(dat, y_col, y_label, main){
+# Enhanced bar plot for scientific publication
+ggplot(dat, aes(x = organism, y = .data[[y_col]])) + 
+  geom_bar(stat = 'identity', 
+           width = 0.6,  # Reduced width for more spacing between bars
+           aes(fill = organism)) +  # Unique color for each bar
+  geom_text(aes(label = .data[[y_col]]),  # Y values displayed above bars
+            vjust = -0.5,  # Position above bars
+            size = 2.5,    # Appropriate text size for publication
+            color = "black") +
+  scale_fill_viridis_d(name = "Organism",  # Colorblind-friendly palette
+                       option = "D") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +  # Clean axis scaling
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 12)) + # Wrap long labels
+  labs(x = "Organism", 
+       y = y_label,
+       title = main) +
+  theme_minimal() +  # Clean, unobtrusive background
+  theme(
+    # Clean background
+    panel.grid.major.x = element_blank(),  # Remove vertical grid lines
+    panel.grid.minor = element_blank(),    # Remove minor grid lines
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    
+    # Axis formatting
+    axis.text.x = element_text(vjust = 1,
+                               size = 8,
+                               color = "black"),
+    axis.text.y = element_text(size = 10, color = "black"),
+    axis.title = element_text(size = 12, color = "black"),
+    
+    # Legend formatting (remove if not needed)
+    legend.position = "none",  # Remove legend since colors are self-explanatory
+    
+    # Plot title (adjust as needed)
+    plot.title = element_text(size = 14, hjust = 0.5, color = "black"),
+    
+    # Overall plot margins
+    plot.margin = margin(20, 20, 20, 20)
+  )
+}
+```
+
+
+```{r}
+plot_bar(fisho_group, "accession_id", "Number of Genes", "SwissProt Species Distribution (Actinoptyergii only)")
+ggsave(paste0(params$image_out, "species_dist_by_gene_fish_only.png"), width = 12, height = 6, dpi = 300, bg = "white")
+
+plot_bar(tot_group, "accession_id", "Number of Genes", "SwissProt Species Distribution")
+ggsave(paste0(params$image_out, "species_dist_by_gene.png"), width = 12, height = 6, dpi = 300, bg = "white")
+
+plot_bar(fisho_trans_group, "transcript_name", "Number of transcripts", "SwissProt Species Distribution (Actinoptyergii only)")
+ggsave(paste0(params$image_out, "species_dist_by_transcript_fish_only.png"), width = 12, height = 6, dpi = 300, bg = "white")
+
+plot_bar(tot_trans_group, "transcript_name", "Number of transcripts", "SwissProt Species Distribution")
+ggsave(paste0(params$image_out, "species_dist_by_transcript.png"), width = 12, height = 6, dpi = 300, bg = "white")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
