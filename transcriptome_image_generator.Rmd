@@ -13,6 +13,7 @@ params:
 library(ggplot2)
 library(scales)
 library(stringr)
+library(svglite)
 ```
 
 
@@ -105,16 +106,16 @@ ggplot(dat, aes(x = organism, y = .data[[y_col]])) +
 
 ```{r}
 plot_bar(fisho_group, "accession_id", "Number of Genes", "SwissProt Species Distribution (Actinoptyergii only)")
-ggsave(paste0(params$image_out, "species_dist_by_gene_fish_only.png"), width = 12, height = 6, dpi = 300, bg = "white")
+ggsave(paste0(params$image_out, "species_dist_by_gene_fish_only.svg"), width = 12, height = 6, dpi = 300, bg = "white")
 
 plot_bar(tot_group, "accession_id", "Number of Genes", "SwissProt Species Distribution")
-ggsave(paste0(params$image_out, "species_dist_by_gene.png"), width = 12, height = 6, dpi = 300, bg = "white")
+ggsave(paste0(params$image_out, "species_dist_by_gene.svg"), width = 12, height = 6, dpi = 300, bg = "white")
 
 plot_bar(fisho_trans_group, "transcript_name", "Number of transcripts", "SwissProt Species Distribution (Actinoptyergii only)")
-ggsave(paste0(params$image_out, "species_dist_by_transcript_fish_only.png"), width = 12, height = 6, dpi = 300, bg = "white")
+ggsave(paste0(params$image_out, "species_dist_by_transcript_fish_only.svg"), width = 12, height = 6, dpi = 300, bg = "white")
 
 plot_bar(tot_trans_group, "transcript_name", "Number of transcripts", "SwissProt Species Distribution")
-ggsave(paste0(params$image_out, "species_dist_by_transcript.png"), width = 12, height = 6, dpi = 300, bg = "white")
+ggsave(paste0(params$image_out, "species_dist_by_transcript.svg"), width = 12, height = 6, dpi = 300, bg = "white")
 ```
 
 

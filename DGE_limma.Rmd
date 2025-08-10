@@ -119,7 +119,9 @@ make_heatmap = function(cpms, samples_comp, sig_genes, main, color, annotation_c
   #rownames(col_anno)[which(!(rownames(col_anno) %in% sig_genes))] = 
   #make heatmap
   if(length(sig_cpm) > 0){
-    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = T, annotation_col = col_anno, main = main, color = color, annotation_colors = annotation_color, filename = filename)
+    svg(filename)
+    pheatmap(sig_cpm, scale = "row", border_color = NA, show_rownames = T, annotation_col = col_anno, main = main, color = color, annotation_colors = annotation_color)#, filename = filename)
+    dev.off()
   }
   
 }
@@ -176,10 +178,10 @@ calc_deg = function(fit, test, cpms, anno_color_opts, color){
   #make heatmaps if more than 1 DEG present (otherwise doesn't work)
   if(length(rownames(sig_genes)) > 1){
 
-    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.pdf"))
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_deg_heatmap.svg"))
     
     #pvalue heatmap
-    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sigp), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_PValue_deg_heatmap.pdf"))
+    make_heatmap(cpms = cpms, samples_comp = samples_comp, sig_genes = rownames(sigp), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts[test_list]), filename = paste0(params$image_out, test, "_PValue_deg_heatmap.svg"))
   
     make_heatmap(cpms = cpms, samples = samples, sig_genes = rownames(sig_genes), main = paste0(test, " significant DEG heatmap"), color = color, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, test, "_deg_heatmap_all_samples.png"))
   
@@ -222,7 +224,7 @@ for(test in tests){
   sig_list_down[[test]] = rownames(subset(res, logFC < 0))
 }
 
-make_heatmap(cpms = y$E, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.png"))
+make_heatmap(cpms = y$E, samples = samples, sig_genes = sig_genes, main = "Significant DEG heatmap", color = cols, annotation_color = list(treatment = anno_color_opts), filename = paste0(params$image_out, "sig_deg_heatmap_all_samples.svg"))
 
 ```
 
