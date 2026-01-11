@@ -1,0 +1,84 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(ggpmisc)
+```
+
+
+```{r}
+regex = "CG"
+genome = ""
+
+moduleTraitCor = read.csv(paste0("..\\data_analysis\\WGCNA_output\\", regex, "_module_trait_cor.csv"))
+
+rownames(moduleTraitCor) = moduleTraitCor$X
+moduleTraitCor = moduleTraitCor[,-1]
+
+moduleTraitPvalue = read.csv(paste0("..\\data_analysis\\WGCNA_output\\", regex, "_module_trait_info.csv"))
+
+rownames(moduleTraitPvalue) = moduleTraitPvalue$X
+moduleTraitPvalue = moduleTraitPvalue[,-1]
+
+tMEs = read.csv(paste0("..\\data_analysis\\WGCNA_output\\", regex, "_tMEs.csv"))
+
+```
+
+```{r}
+convert_to_index = function(i, dim1){
+  return(c(((i-1)%%dim1)+1, ceiling(i/dim1)))
+}
+```
+
+```{r}
+textMatrix = paste(ifelse(moduleTraitPvalue <= 0.05, paste(signif(moduleTraitCor, 2), "\n(", signif(moduleTraitPvalue, 1), ")",  sep = ""), "-"))
+dim(textMatrix) = dim(moduleTraitCor)
+
+sig_pos = lapply(which(textMatrix != "-"), convert_to_index, dim(textMatrix)[1])
+
+#sig_continuous = compact(mapply(sig_pos, FUN = function(x){if(x[2] > 5){return(x)}}))
+```
+
+
+
+```{r}
+graph_sig_cont = function(i, sig_continuous, names_list, traits_list, tMEs){
+  #get modules with significant associations with categorical modules
+  sig_cont_names = unlist(compact(mapply(sig_continuous, FUN = function(x){if(x[2] == i){return(x[1])}})))
+  #convert index to module names
+  sig_cont_names = names_list[sig_cont_names]
+  #remove the ME from the start and remove duplicates
+  sig_cont_names = unique(sapply(strsplit(sig_cont_names, "ME", fixed = TRUE), function(x) x[2]))
+  
+  
+  sig_cont_tMEs = subset(tMEs, tMEs$module %in% sig_cont_names)
+  
+  if(nrow(sig_cont_tMEs) == 1){
+    lm_line = lm(ME ~ .data[[traits_list[i]]], sig_cont_tMEs)
+    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point() + theme_classic()
+  }else if(nrow(sig_cont_tMEs) > 1){
+    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME, color = module, shape = treatment)) + geom_point() + geom_smooth(aes(group = module, color = module), method = "lm", se = FALSE) + ggpmisc::stat_poly_eq(aes(group = module, color = module, label = paste(..adj.rr.label.., ..p.value.label.., sep = "~~~")), formula = y ~ x, parse = TRUE, method = "lm", label.x = 0.1, label.y = seq(from = 0.98, by = -0.08, length.out = length(unique(sig_cont_tMEs$module))), vjust = 1, size = 3) + scale_color_manual(values = setNames(unique(sig_cont_tMEs$module), unique(sig_cont_tMEs$module))) + theme_classic()
+    #ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point() + facet_wrap(~module)
+  }
+}
+```
+
+
+```{r}
+#plot_list = compact(lapply(c(6:length(colnames(moduleTraitCor))), graph_sig_cont, sig_pos, rownames(moduleTraitCor), colnames(moduleTraitCor), tMEs))
+
+plot_list = compact(lapply(c(1:length(colnames(moduleTraitCor))), graph_sig_cont, sig_pos, rownames(moduleTraitCor), colnames(moduleTraitCor), tMEs))
+
+arrange = ggarrange(plots = plot_list)
+
+ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", genome, regex, "_sig_ME_response_scatterplot.png"), plot = arrange, units = "in", height = 10, width = 9)
+```
+
+
+
+
+
+

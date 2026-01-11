@@ -3,12 +3,12 @@ title: "WGCNA"
 output: 
   pdf_document: default
 params:
-  input_counts: "..\\data_analysis\\genome_CM_red_filtered_counts.csv"
-  input_samples: "..\\data_analysis\\samples_red.csv"
-  regex: "CM"
-  genome: "genome_"
-  traits: "..\\data_analysis\\CM_traits.csv"
-  sw: "..\\annotation\\sw_genome_gene_info.csv"
+  input_counts: "..\\data_analysis\\GG_blue_filtered_counts.csv"
+  input_samples: "..\\data_analysis\\samples_blue.csv"
+  regex: "GG"
+  genome: ""
+  traits: "..\\data_analysis\\GG_traits.csv"
+  sw: "..\\annotation\\gill_meta_gene_info.csv"
 ---
 
 
@@ -80,7 +80,7 @@ if(params$genome != ""){
     datExpr
   }else {
     if(params$regex == "CB"){
-      clust = cutreeStatic(sampleTree, cutHeight = 40000, minSize = 5)
+      clust = cutreeStatic(sampleTree, cutHeight = 300000, minSize = 5)
     }
     if(params$regex == "CM"){
       clust = cutreeStatic(sampleTree, cutHeight = 13000, minSize = 5)
@@ -101,12 +101,13 @@ if(params$genome != ""){
     datExpr
   }else {
     if(params$regex == "CG"){
-      clust = cutreeStatic(sampleTree, cutHeight = 15000, minSize = 5)
+      clust = cutreeStatic(sampleTree, cutHeight = 160000, minSize = 5)
     }else if(params$regex == "CB"){
       clust = cutreeStatic(sampleTree, cutHeight = 30000, minSize = 5)
     }else if(params$regex == "CM"){
       clust = cutreeStatic(sampleTree, cutHeight = 11000, minSize = 5)
     }
+    clust = cutreeStatic(sampleTree, cutHeight = 275000, minSize = 5)
     table(clust)
     #clust 1 contains the samples we want to keep
     keepSamples = (clust == 1)
@@ -138,11 +139,14 @@ fs = rownames(datExpr)
 #make sure keys match between tables (same sample IDs used in Phys and gene expression tables)
 traitRows = match(fs, allTraits$Name)
 datTraits = allTraits[traitRows, -1]
+traitRows
+#datTraits = data.frame(Ucrit_relative = datTraits)
 rownames(datTraits) = allTraits[traitRows, 1]
 
 collectGarbage()
 datTraits
 ```
+
 
 ```{r}
 #visualization of clinical traits relation to sample dendrogram
@@ -160,7 +164,7 @@ plotDendroAndColors(sampleTree2, traitColors, groupLabels = names(datTraits), ma
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
 
 #call the network topology analysis function
-sft = pickSoftThreshold(datExpr, powerVector = powers, verbose = 5)
+sft = pickSoftThreshold(datExpr, powerVector = powers, verbose = 5, networkType = "signed")
 
 #sizeGrWindow(9,5)
 par(mfrow = c(1,2))
@@ -194,6 +198,7 @@ if(params$genome != ""){
     spower = 7
   }else if(params$regex == "CG"){
     spower = 9
+    #spower = 12
   }else if(params$regex == "CL"){
     spower = 12
   }else if(params$regex == "CM"){
@@ -203,13 +208,16 @@ if(params$genome != ""){
   if(params$regex == "CB"){
     spower = 8
   }else if(params$regex == "CG"){
-    spower = 9
+    spower = 11
   }else if(params$regex == "CL"){
     spower = 12
   }else if(params$regex == "CM"){
     spower = 9
   } 
 }
+#GG: 11
+#CG: 9
+#BG: 9
 
 ```
 
@@ -217,7 +225,7 @@ if(params$genome != ""){
 ```{r}
 #construct gene networks and identify modules
 #pick power = 10 because it seems to even off there
-net = blockwiseModules(datExpr, power = spower, TOMType = "unsigned", minModuleSize = 30, reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE, pamRespectsDendro = FALSE, verbose = 3)
+net = blockwiseModules(datExpr, power = spower, minModuleSize = 30, reassignThreshold = 0, mergeCutHeight = 0.25, numericLabels = TRUE, pamRespectsDendro = FALSE, verbose = 3, networkType = "signed")
 ```
 
 ```{r}
@@ -265,7 +273,7 @@ dim(textMatrix) = dim(moduleTraitCor)
 png(paste0("..\\data_analysis\\images\\WGCNA\\", params$genome, params$regex, "_labeled_heatmap.png"), width = 1000, height = 700)
 
 par(mar = c(9, 12.5, 3, 3))
-labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = names(MEs), ySymbols = names(MEs), colorLabels = FALSE, colors = greenWhiteRed(50), textMatrix = textMatrix, setStdMargins = FALSE, cex.text = 0.5, zlim = c(-1,1), main = paste("Module-trait relationships"))
+labeledHeatmap(Matrix = moduleTraitCor, xLabels = names(datTraits), yLabels = names(MEs), ySymbols = names(MEs), colorLabels = FALSE, colors = colorRampPalette(c("red", "white", "blue"))(51), textMatrix = textMatrix, setStdMargins = FALSE, cex.text = 0.5, zlim = c(-1,1), main = paste("Module-trait relationships"))
 
 dev.off()
 ```
@@ -282,10 +290,11 @@ convert_to_index = function(i, dim1){
 sig_pos = lapply(which(textMatrix != "-"), convert_to_index, dim(textMatrix)[1])
 
 #select significant associations with categorical variables
-sig_categorical = compact(mapply(sig_pos, FUN = function(x){if(x[2] <= 3){return(x)}}))
+sig_categorical = compact(mapply(sig_pos, FUN = function(x){if(x[2] <= 5){return(x)}}))
 
 #select significant associations with continuous variables
-sig_continuous = compact(mapply(sig_pos, FUN = function(x){if(x[2] > 3){return(x)}}))
+sig_continuous = compact(mapply(sig_pos, FUN = function(x){if(x[2] > 5){return(x)}}))
+
 ```
 
 
@@ -305,7 +314,9 @@ geneTraitSignificance = as.data.frame(cor(datExpr, weight, use = "p"))
 GSPvalue = as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSamples))
 
 names(geneTraitSignificance) = paste("GS.", names(weight), sep = "")
-names(GSPvalue) = paste("p.GS", names(weight), sep = "")
+names(GSPvalue) = paste("p.GS.", names(weight), sep = "")
+
+geneIntramodularConnectivity =  intramodularConnectivity.fromExpr(datExpr = datExpr, colors = moduleColors, networkType = "signed", getWholeNetworkConnectivity = FALSE)
 
 ```
 
@@ -313,7 +324,7 @@ names(GSPvalue) = paste("p.GS", names(weight), sep = "")
 #Intramodular analysis: identifying genes with high GS and MM
 
 module = "pink"
-trait = 2
+trait = 1
 traitName = unlist(strsplit(names(geneTraitSignificance[trait]), ".", fixed = TRUE))[trait]
 column = match(module, modNames)
 moduleGenes = moduleColors == module
@@ -341,7 +352,7 @@ sum(is.na(probes2annot))
 ```
 
 ```{r}
-geneInfo = data.frame(transcript_name = probes, geneSymbol = annot$accession_id[probes2annot], moduleColor = moduleColors, geneTraitSignificance, GSPvalue)
+geneInfo = data.frame(transcript_name = probes, geneSymbol = annot$accession_id[probes2annot], moduleColor = moduleColors, geneTraitSignificance, GSPvalue, geneIntramodularConnectivity = geneIntramodularConnectivity)
 #order modules by significance for weight
 modOrder = order(-abs(cor(MEs, weight[,trait], use = "p")))
 #add module membership info in the chosen order
@@ -392,7 +403,6 @@ for(module in unique(sigGeneInfo$moduleColor)){
 ```
 
 
-
 ```{r}
 tMEs = as.data.frame(t(MEs))
 
@@ -401,9 +411,13 @@ tMEs$reg = apply(tMEs, MARGIN = 1, FUN = function(x){ if(median(x) > 0){return("
 tMEs$module = sapply(strsplit(rownames(tMEs), "ME", fixed = TRUE), function(x) x[2])
 
 tMEs = pivot_longer(tMEs, cols = starts_with(params$regex), names_to = "sample", values_to = "ME")
-tMEs = merge(tMEs, data.frame(sample = rownames(datTraits), treatment = c(rep("control", times = sum(datTraits$Control)), rep("relaxation", times = sum(datTraits$Relaxation)), rep("upwelling", times = sum(datTraits$Upwelling)))))
-tMEs = merge(tMEs, cbind(datTraits[-c(1:3)], sample = rownames(datTraits)))
+
+tMEs = merge(tMEs, data.frame(sample = samples$Name, treatment = case_match(samples$Treatment, "C" ~ "control", "E" ~ "extreme", "M" ~ "moderate", "R" ~ "relaxation", "U" ~ "upwelling")))
+
+tMEs = merge(tMEs, cbind(datTraits, sample = rownames(datTraits)))
 tMEs
+
+write.csv(tMEs, paste0("..\\data_analysis\\", "WGCNA_output\\", params$genome, params$regex, "_tMEs.csv"), row.names = FALSE)
 ```
 
 
@@ -441,21 +455,55 @@ graph_sig_cont = function(i, sig_continuous, names_list, traits_list, tMEs){
   
   sig_cont_tMEs = subset(tMEs, tMEs$module %in% sig_cont_names)
   
-  if(length(sig_cont_tMEs) == 1){
+  if(nrow(sig_cont_tMEs) == 1){
     ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point()
-  }else if(length(sig_cont_tMEs > 1)){
-    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point() + facet_wrap(~module)
+  }else if(nrow(sig_cont_tMEs) > 1){
+    ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME, color = module, shape = treatment)) + geom_point() + scale_color_manual(values = setNames(unique(sig_cont_tMEs$module), unique(sig_cont_tMEs$module)))
+    #ggplot(sig_cont_tMEs, aes(x = .data[[traits_list[i]]], y = ME)) + geom_point() + facet_wrap(~module)
   }
 }
 ```
 
 
 ```{r}
-plot_list = compact(lapply(c(4:length(colnames(moduleTraitCor))), graph_sig_cont, sig_continuous, rownames(moduleTraitCor), colnames(moduleTraitCor), tMEs))
+plot_list = compact(lapply(c(6:length(colnames(moduleTraitCor))), graph_sig_cont, sig_continuous, rownames(moduleTraitCor), colnames(moduleTraitCor), tMEs))
 
 arrange = ggarrange(plots = plot_list)
 
 ggsave(paste0("..\\data_analysis\\images\\WGCNA\\", params$genome, params$regex, "_sig_ME_response_scatterplot.png"), plot = arrange)
+```
+
+```{r}
+#graph of gene expression of all genes in modules of interest, with ME and specific genes highlighted
+
+#get names of modules of interest
+modules_of_interest = gsub("ME", "", unique(rownames(moduleTraitCor)[mapply(sig_continuous, FUN = function(x){x[1]})]))
+#set index (need to change to for loop)
+for(i in 1:length(modules_of_interest)){
+  #log 2 transform and transpose expression data
+  tdatExpr = as.data.frame(t(log2(datExpr)))
+  tdatExpr$transcript_name = rownames(tdatExpr)
+  #combine first 3 columns of gene info for module of interest and expression data
+  curr_expr = merge(geneInfo[geneInfo$moduleColor == modules_of_interest[i],][,1:3], tdatExpr, by = "transcript_name")
+  #convert to long format
+  curr_expr = pivot_longer(curr_expr, cols = c(4:ncol(curr_expr)), names_to = "specimen", values_to = "expression")
+  
+  #get gene info of current module of interest
+  genes_curr_of_interest = select(geneInfo, transcript_name, paste0("MM.", modules_of_interest[i]), moduleColor)
+  #select out only those genes actually in the module
+  genes_curr_of_interest = subset(genes_curr_of_interest, genes_curr_of_interest$moduleColor == modules_of_interest[i])
+  #set name of MM.[module color] column to just MM
+  colnames(genes_curr_of_interest)[colnames(genes_curr_of_interest) == paste0("MM.", modules_of_interest[i])]  = "MM"
+  #sort by MM for that module
+  genes_curr_of_interest =  genes_curr_of_interest[order(genes_curr_of_interest$MM, decreasing = TRUE),]
+  #select only the top 5 names
+  genes_curr_of_interest = genes_curr_of_interest[1:5,]$transcript_name
+  
+  ggplot(curr_expr, aes(x = specimen, y = expression, group = transcript_name)) + geom_line(alpha = 0.2) + geom_line(data = subset(curr_expr, curr_expr$transcript_name %in% genes_curr_of_interest), aes(color = transcript_name), linewidth = 0.5) + scale_x_discrete(guide = guide_axis(n.dodge = 2))
+  
+  ggsave(paste0(paste0("..\\data_analysis\\images\\WGCNA\\", params$genome, params$regex, "_", modules_of_interest[i],  "_total_expression_graph.png")))
+
+}
 ```
 
 
